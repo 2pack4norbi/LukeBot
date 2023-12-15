@@ -1,4 +1,6 @@
 using System;
+using System.Net;
+using System.Net.Sockets;
 using System.Linq;
 using System.Collections.Generic;
 using System.Threading;
@@ -10,9 +12,17 @@ namespace LukeBot.Interface
     public class ServerCLI: CLI
     {
         private AutoResetEvent mCloseEvent = new(false);
+        private Dictionary<string, Command> mCommands = new Dictionary<string, Command>();
+        private TcpListener mServer;
+        private string mAddress;
+        private int mPort;
 
-        public ServerCLI()
+        public ServerCLI(string address, int port)
         {
+            mAddress = address;
+            mPort = port;
+
+            mServer = new TcpListener(IPAddress.Parse(address), port);
         }
 
         ~ServerCLI()
@@ -21,12 +31,15 @@ namespace LukeBot.Interface
 
         public void AddCommand(string cmd, Command c)
         {
-            // noop
+            if (!mCommands.TryAdd(cmd, c))
+            {
+                Logger.Log().Error("Failed to add command - " + cmd + " already exists");
+            }
         }
 
         public void AddCommand(string cmd, CLI.CmdDelegate d)
         {
-            // noop
+            AddCommand(cmd, new LambdaCommand(d));
         }
 
         public void Message(string message)
@@ -40,6 +53,7 @@ namespace LukeBot.Interface
 
         public bool Ask(string message)
         {
+            // TODO it should, send a query to the client and respond
             Logger.Log().Error("ServerCLI cannot respond to questions");
             return false;
         }
@@ -54,6 +68,8 @@ namespace LukeBot.Interface
         {
             try
             {
+                mServer.Start();
+
                 Console.CancelKeyPress += delegate {
                     mCloseEvent.Set();
                 };
