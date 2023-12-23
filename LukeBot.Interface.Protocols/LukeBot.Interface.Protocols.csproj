@@ -1,10 +1,10 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
     <Configurations>Debug;Release;SecureDebug</Configurations>
-    <IsWindows Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'true'">true</IsWindows>
-    <IsLinux Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'true'">true</IsLinux>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -24,23 +24,5 @@
     <OutputPath>$(SolutionDir)Bin\$(Configuration)\</OutputPath>
     <IntermediateOutputPath>$(SolutionDir)Obj\$(MSBuildProjectName)\$(Configuration)\</IntermediateOutputPath>
   </PropertyGroup>
-
-  <PropertyGroup Condition="'$(IsWindows)' == 'true'">
-    <DefineConstants>WINDOWS</DefineConstants>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(IsLinux)' == 'true'">
-    <DefineConstants>LINUX</DefineConstants>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\LukeBot.Common\LukeBot.Common.csproj" />
-    <ProjectReference Include="..\LukeBot.Logging\LukeBot.Logging.csproj" />
-    <ProjectReference Include="..\LukeBot.Interface.Protocols\LukeBot.Interface.Protocols.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="CommandLineParser" Version="2.9.1" />
-  </ItemGroup>
 
 </Project>

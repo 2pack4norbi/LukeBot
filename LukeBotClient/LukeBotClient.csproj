@@ -38,7 +38,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\LukeBot.Common\LukeBot.Common.csproj" />
-    <ProjectReference Include="..\LukeBot.Logging\LukeBot.Logging.csproj" />
+    <ProjectReference Include="..\LukeBot.Interface.Protocols\LukeBot.Interface.Protocols.csproj" />
   </ItemGroup>
 
   <ItemGroup>
