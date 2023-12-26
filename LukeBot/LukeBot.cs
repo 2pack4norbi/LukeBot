@@ -217,11 +217,11 @@ namespace LukeBot
 
                 GlobalModules.Run();
 
-                LoadUsers();
-
                 InterfaceType uiType = opts.CLI;
                 Logger.Log().Info("Initializing UI {0}...", uiType.ToString());
                 UserInterface.Initialize(uiType);
+
+                LoadUsers();
 
                 Logger.Log().Info("Giving control to UI");
                 AddCLICommands();

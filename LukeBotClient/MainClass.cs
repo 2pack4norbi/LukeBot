@@ -1,5 +1,5 @@
 ﻿using LukeBot.Common;
-using LukeBot.Logging;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
@@ -24,7 +24,7 @@ namespace LukeBotClient
                 if (e is HelpVerbRequestedError || e is HelpRequestedError)
                     continue;
 
-                Logger.Log().Error("ERROR: {0}", e.Tag);
+                Console.WriteLine("ERROR: {0}", e.Tag);
             }
         }
 
@@ -36,7 +36,6 @@ namespace LukeBotClient
         static async Task MainAsync(string[] args)
         {
             FileUtils.SetUnifiedCWD();
-            Logger.SetProjectRootDir(Directory.GetCurrentDirectory());
 
             Parser.Default.ParseArguments<ProgramOptions>(args)
                 .WithParsed<ProgramOptions>(HandleProgramOptions)
@@ -49,7 +48,7 @@ namespace LukeBotClient
             }
             catch (System.Exception e)
             {
-                Logger.Log().Error("Caught exception: " + e.Message + "\n" + e.StackTrace);
+                Console.WriteLine("Caught exception: " + e.Message + "\n" + e.StackTrace);
             }
         }
     }

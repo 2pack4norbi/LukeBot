@@ -69,6 +69,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LukeBot.Logging", "LukeBot.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LukeBotClient", "LukeBotClient\LukeBotClient.csproj", "{B5926AFF-B8DC-4459-ADC7-F4DF505DD1AF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LukeBot.Interface.Protocols", "LukeBot.Interface.Protocols\LukeBot.Interface.Protocols.csproj", "{097919C3-910C-42CE-9653-9BB21A12093F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -196,6 +198,12 @@ Global
 		{B5926AFF-B8DC-4459-ADC7-F4DF505DD1AF}.Release|Any CPU.Build.0 = Release|Any CPU
 		{B5926AFF-B8DC-4459-ADC7-F4DF505DD1AF}.SecureDebug|Any CPU.ActiveCfg = SecureDebug|Any CPU
 		{B5926AFF-B8DC-4459-ADC7-F4DF505DD1AF}.SecureDebug|Any CPU.Build.0 = SecureDebug|Any CPU
+		{097919C3-910C-42CE-9653-9BB21A12093F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{097919C3-910C-42CE-9653-9BB21A12093F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{097919C3-910C-42CE-9653-9BB21A12093F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{097919C3-910C-42CE-9653-9BB21A12093F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{097919C3-910C-42CE-9653-9BB21A12093F}.SecureDebug|Any CPU.ActiveCfg = Debug|Any CPU
+		{097919C3-910C-42CE-9653-9BB21A12093F}.SecureDebug|Any CPU.Build.0 = Debug|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using LukeBot.Common;
 using LukeBot.Config;
 using LukeBot.Globals;
+using LukeBot.Interface;
 using LukeBot.Logging;
 using LukeBot.Module;
 
@@ -15,9 +16,44 @@ namespace LukeBot
 
         private const string PROP_STORE_MODULES_DOMAIN = "modules";
         private const string PROP_STORE_WIDGETS_DOMAIN = "widgets";
+        private const string PROP_STORE_ACCOUNT_DOMAIN = "account";
+        private const string PROP_STORE_PASSWORD = "password";
 
         private Dictionary<ModuleType, IUserModule> mModules = new();
+        private PasswordData mPasswordData;
 
+        // user data management
+        private void UpdateUserDataInConfig()
+        {
+            Path passwordDataPath = Path.Start()
+                .Push(Constants.PROP_STORE_USER_DOMAIN)
+                .Push(Username)
+                .Push(PROP_STORE_ACCOUNT_DOMAIN)
+                .Push(PROP_STORE_PASSWORD);
+
+            if (!Conf.Exists<PasswordData>(passwordDataPath))
+                Conf.Add(passwordDataPath, Property.Create<PasswordData>(mPasswordData));
+            else
+                Conf.Modify<PasswordData>(passwordDataPath, mPasswordData);
+        }
+
+        private void LoadUserDataFromConfig()
+        {
+            Path passwordDataPath = Path.Start()
+                .Push(Constants.PROP_STORE_USER_DOMAIN)
+                .Push(Username)
+                .Push(PROP_STORE_ACCOUNT_DOMAIN)
+                .Push(PROP_STORE_PASSWORD);
+
+            if (!Conf.TryGet<PasswordData>(passwordDataPath, out mPasswordData))
+            {
+                // no password, issue a warning
+                UserInterface.CommandLine.Message("User has no password set! Remember to set your password.");
+                mPasswordData = null;
+            }
+        }
+
+        // module-config management
         private void AddModuleToConfig(string module)
         {
             Path modulesProp = Path.Start()
@@ -95,6 +131,8 @@ namespace LukeBot
         {
             Username = user;
 
+            LoadUserDataFromConfig();
+
             Logger.Log().Info("Loading required modules for user {0}", Username);
             LoadModulesFromConfig();
 
@@ -131,6 +169,33 @@ namespace LukeBot
             foreach (ModuleType m in mModules.Keys)
                 enabledModules.Add(m);
             return enabledModules;
+        }
+
+        // Set a new password based on a received hash. This path should
+        // be taken only by remote connections (aka. via ServerCLI)
+        public void SetPassword(byte[] passwordHash)
+        {
+            mPasswordData = PasswordData.Create(passwordHash);
+        }
+
+        // Set a new password based on plaintext. This path should
+        // be ONLY taken locally (ex. via BasicCLI)
+        public void SetPassword(string newPassword)
+        {
+            mPasswordData = PasswordData.Create(newPassword);
+        }
+
+        // Validates if password is correct. For remote connections only.
+        public bool ValidatePassword(byte[] passwordHash)
+        {
+            if (mPasswordData == null)
+            {
+                // no password data - reject login
+                Logger.Log().Warning("Attempted to validate non-existing password for user {0}", Username);
+                return false;
+            }
+
+            return mPasswordData.Equals(passwordHash);
         }
 
         public void RunModules()

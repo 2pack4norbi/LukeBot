@@ -123,7 +123,7 @@ namespace LukeBot.Tests.Config
         [TestMethod]
         public void ConfUtil_ArrayAppend_Multiple_Array()
         {
-            LukeBot.Config.Path p = LukeBot.Config.Path.Form("test", "numbers");
+            Path p = Path.Form("test", "numbers");
 
             int[] numbers = { 1, 5, 3, 2, 4 };
             ConfUtil.ArrayAppend(p, numbers);
@@ -143,7 +143,7 @@ namespace LukeBot.Tests.Config
         [TestMethod]
         public void ConfUtil_ArrayAppend_Custom()
         {
-            LukeBot.Config.Path p = LukeBot.Config.Path.Form("test", "custom");
+            Path p = Path.Form("test", "custom");
 
             Custom[] array = { new Custom(10, 6.66f), new Custom(1, 2.0f), new Custom(5, 3.0f), new Custom(3, 3.14f) };
             foreach (Custom c in array)
@@ -179,7 +179,7 @@ namespace LukeBot.Tests.Config
         [TestMethod]
         public void ConfUtil_ArrayAppend_CustomArray()
         {
-            LukeBot.Config.Path p = LukeBot.Config.Path.Form("test", "custom");
+            Path p = Path.Form("test", "custom");
 
             Custom[] array = { new Custom(10, 6.66f), new Custom(1, 2.0f), new Custom(5, 3.0f), new Custom(3, 3.14f) };
             ConfUtil.ArrayAppend(p, array, new CustomComparerA());
@@ -215,7 +215,7 @@ namespace LukeBot.Tests.Config
         {
             int[] numbers = { 1, 5, 3, 2, 4 };
 
-            LukeBot.Config.Path p = LukeBot.Config.Path.Form("test", "numbers");
+            Path p = Path.Form("test", "numbers");
 
             ConfUtil.ArrayAppend(p, numbers);
             ConfUtil.ArrayRemove(p, 3);
