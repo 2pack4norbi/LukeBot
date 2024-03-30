@@ -177,7 +177,7 @@ namespace LukeBot.Twitch
                     message.ParseEmotesString(chatMsg, emotes);
                 }
 
-                if (m.GetTag("badges", out string badges))
+                if (m.GetTag("badges", out string badges) && badges != null && badges.Length > 0)
                 {
                     message.AddBadges(mChannelBadges.GetBadges(badges));
                 }

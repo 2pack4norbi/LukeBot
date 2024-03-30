@@ -204,6 +204,8 @@
         }
 
         show() {
+            if (this.mShown) return;
+
             this.mTitleElement.classList.remove(this.mHiddenClassName);
             this.mTitlePath.style.animation = 'alert-line-anim 6s ease-out forwards infinite';
 
@@ -216,9 +218,13 @@
                 this.mTitleElement.style.transitionDelay = "0ms";
                 this.mDetailsElement.style.transitionDelay = "150ms";
             }
+
+            this.mShown = true;
         }
 
         launchScroll(audioDuration) {
+            if (!this.mShown) return;
+
             // parameters for scroll
             this.mDetailsDiv.style.transform = `translateY(0px)`;
             this.mDetailsScroll = 0;
@@ -241,6 +247,8 @@
         }
 
         hide(afterHideCb) {
+            if (!this.mShown) return;
+
             this.mTitleElement.style.transitionDelay = "150ms";
             this.mDetailsElement.style.transitionDelay = "0ms";
 
@@ -266,6 +274,8 @@
             this.mTitleElement.addEventListener("transitionend", titleHandler);
             if (this.mDetailsDiv.innerHTML)
                 this.mDetailsElement.addEventListener("transitionend", detailsHandler);
+
+            this.mShown = false;
         }
 
         setTitle(title) {
@@ -515,10 +525,10 @@
         // TODO widget's configuration should adjust this
         switch (obj.Title)
         {
-        case "Speech in English":
+        case "Brian":
             if (obj.Message) alertChain.add(new TTSAlert("Brian", obj.Message));
             break;
-        case "Speech po Polsku":
+        case "Jacek":
             if (obj.Message) alertChain.add(new TTSAlert("Jacek", obj.Message));
             break;
         default: break;
@@ -533,7 +543,10 @@
         if (obj.Message) {
             alertChain.add(new ShowInfoAlert(obj.DisplayName + "<br>cheered " + obj.Amount, obj.Message));
             alertChain.add(new AudioAlert("/content/success-48018.ogg"));
-            alertChain.add(new TTSAlert("Jacek", obj.Message));
+            if (obj.Amount == 5)
+                alertChain.add(new TTSAlert("Jacek", obj.Message));
+            else
+                alertChain.add(new TTSAlert("Brian", obj.Message));
         } else {
             alertChain.add(new ShowInfoAlert(obj.DisplayName + "<br>cheered " + obj.Amount, null));
             alertChain.add(new AudioAlert("/content/success-48018.ogg"));
