@@ -139,7 +139,7 @@ namespace LukeBot.Twitch.EventSub
         public string tier { get; set; }
         public int total { get; set; }
         public int? cumulative_total { get; set; } // null if (is_anonymous == true)
-        public bool is_anonymous {get; set; }
+        public bool is_anonymous { get; set; }
     }
 
     internal class PayloadRewardEvent
@@ -157,6 +157,13 @@ namespace LukeBot.Twitch.EventSub
         public string status { get; set; }
         public PayloadRewardEvent reward { get; set; }
         public DateTime redeemed_at { get; set; }
+    }
+
+    internal class PayloadCheerEvent: PayloadEvent
+    {
+        public bool is_anonymous { get; set; }
+        public string message { get; set; }
+        public int bits { get; set; }
     }
 
 

@@ -57,12 +57,11 @@ namespace LukeBot.Widget
             }
         }
 
-        private void OnChannelPointsEvent(object o, EventArgsBase args)
+        private void OnSimpleEvent<T>(object o, EventArgsBase args)
+            where T : EventArgsBase
         {
-            TwitchChannelPointsRedemptionArgs a = args as TwitchChannelPointsRedemptionArgs;
-
+            T a = args as T;
             SendToWS(a);
-
             AwaitEventCompletion();
         }
 
@@ -114,8 +113,11 @@ namespace LukeBot.Widget
         {
             EventCollection collection = Comms.Event.User(lbUser);
 
-            collection.Event(Events.TWITCH_CHANNEL_POINTS_REDEMPTION).Endpoint += OnChannelPointsEvent;
+            collection.Event(Events.TWITCH_CHANNEL_POINTS_REDEMPTION).Endpoint += OnSimpleEvent<TwitchChannelPointsRedemptionArgs>;
             collection.Event(Events.TWITCH_CHANNEL_POINTS_REDEMPTION).InterruptEndpoint += OnEventInterrupt;
+
+            collection.Event(Events.TWITCH_CHEER).Endpoint += OnSimpleEvent<TwitchCheerArgs>;
+            collection.Event(Events.TWITCH_CHEER).InterruptEndpoint += OnEventInterrupt;
 
             collection.Event(Events.TWITCH_SUBSCRIPTION).Endpoint += OnSubscriptionEvent;
             collection.Event(Events.TWITCH_SUBSCRIPTION).InterruptEndpoint += OnEventInterrupt;

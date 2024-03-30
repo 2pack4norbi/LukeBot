@@ -15,6 +15,8 @@ namespace LukeBot.Twitch.Common
         public const string TWITCH_SUBSCRIPTION = "TwitchSubscription";
 
         public const string TWITCH_CHANNEL_POINTS_REDEMPTION = "TwitchChannelPointsRedemption";
+
+        public const string TWITCH_CHEER = "TwitchCheer";
     }
 
 
@@ -119,6 +121,9 @@ namespace LukeBot.Twitch.Common
             Nick = nick;
         }
     }
+
+
+    // Subscriptions
 
     public enum TwitchSubscriptionType
     {
@@ -267,14 +272,43 @@ namespace LukeBot.Twitch.Common
     {
         public string User { get; private set; }
         public string DisplayName { get; private set; }
+        public string ID { get; private set; }
         public string Title { get; private set; }
+        public int Cost { get; private set; }
+        public string Prompt { get; private set; }
+        public string Message { get; private set; }
 
-        public TwitchChannelPointsRedemptionArgs(string user, string displayName, string title)
+        public TwitchChannelPointsRedemptionArgs(string user, string displayName,
+                string id, string title, int cost, string prompt, string message)
             : base(Events.TWITCH_CHANNEL_POINTS_REDEMPTION)
         {
             User = user;
             DisplayName = displayName;
+            ID = id;
             Title = title;
+            Cost = cost;
+            Prompt = prompt;
+            Message = message;
+        }
+    }
+
+
+    // Cheers
+
+    public class TwitchCheerArgs: EventArgsBase
+    {
+        public string User { get; private set; }
+        public string DisplayName { get; private set; }
+        public int Amount { get; private set; }
+        public string Message { get; private set; }
+
+        public TwitchCheerArgs(string user, string displayName, int amount, string message)
+            : base(Events.TWITCH_CHEER)
+        {
+            User = user;
+            DisplayName = displayName;
+            Amount = amount;
+            Message = message;
         }
     }
 }

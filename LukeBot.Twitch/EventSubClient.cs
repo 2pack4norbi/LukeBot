@@ -29,6 +29,8 @@ namespace LukeBot.Twitch
         public const string SUB_CHANNEL_POINTS_REDEMPTION_ADD = SUB_CHANNEL_POINTS_REDEMPTION + ".add";
         public const string SUB_CHANNEL_POINTS_REDEMPTION_UPDATE = SUB_CHANNEL_POINTS_REDEMPTION + ".update";
 
+        public const string SUB_CHEER = SUB_CHANNEL + ".cheer";
+
         public const string SUB_SUBSCRIBE = SUB_CHANNEL + ".subscribe";
         private const string SUB_SUBSCRIPTION = SUB_CHANNEL + ".subscription";
         public const string SUB_SUBSCRIPTION_GIFT = SUB_SUBSCRIPTION + ".gift";
@@ -37,6 +39,7 @@ namespace LukeBot.Twitch
         private ImmutableArray<string> mValidSubscriptions = ImmutableArray.Create(
             SUB_CHANNEL_POINTS_REDEMPTION_ADD,
             SUB_CHANNEL_POINTS_REDEMPTION_UPDATE,
+            SUB_CHEER,
             SUB_SUBSCRIBE,
             SUB_SUBSCRIPTION_GIFT,
             SUB_SUBSCRIPTION_MESSAGE
@@ -44,6 +47,7 @@ namespace LukeBot.Twitch
 
         private string mLBUser = null;
         private EventCallback mChannelPointsRedemptionCallback;
+        private EventCallback mCheerCallback;
         private EventCallback mSubscriptionCallback;
         private ClientWebSocket mSocket = null;
         private Uri mConnectURI = null;
@@ -101,6 +105,7 @@ namespace LukeBot.Twitch
             {
             case SUB_CHANNEL_POINTS_REDEMPTION_ADD:
             case SUB_CHANNEL_POINTS_REDEMPTION_UPDATE:
+            case SUB_CHEER:
             case SUB_SUBSCRIBE:
             case SUB_SUBSCRIPTION_GIFT:
             case SUB_SUBSCRIPTION_MESSAGE:
@@ -115,7 +120,11 @@ namespace LukeBot.Twitch
         {
             string user = "test_user";
             string displayName = "Test_User";
-            string title = "Test channel points redemption";
+            string id = "1234test";
+            string title = "Test redemption";
+            int cost = 420;
+            string prompt = "This is a test channel points redemption";
+            string message = "Hi I tested this redemption!";
 
             foreach ((string a, string v) a in args)
             {
@@ -123,14 +132,42 @@ namespace LukeBot.Twitch
                 {
                 case "User": user = a.v; break;
                 case "DisplayName": displayName = a.v; break;
+                case "ID": id = a.v; break;
                 case "Title": title = a.v; break;
+                case "Cost": cost = Int32.Parse(a.v); break;
+                case "Prompt": prompt = a.v; break;
+                case "Message": message = a.v; break;
                 default:
                     Logger.Log().Warning("Unknown test event arg: {0}", a.a);
                     break;
                 }
             }
 
-            return new TwitchChannelPointsRedemptionArgs(user, displayName, title);
+            return new TwitchChannelPointsRedemptionArgs(user, displayName, id, title, cost, prompt, message);
+        }
+
+        private EventArgsBase GenerateTestCheerEvent(IEnumerable<(string attrib, string value)> args)
+        {
+            string user = "test_user";
+            string displayName = "Test_User";
+            int amount = 1000;
+            string message = "Test bits cheer";
+
+            foreach ((string a, string v) a in args)
+            {
+                switch (a.a)
+                {
+                case "User": user = a.v; break;
+                case "DisplayName": displayName = a.v; break;
+                case "Amount": amount = Int32.Parse(a.v); break;
+                case "Message": message = a.v; break;
+                default:
+                    Logger.Log().Warning("Unknown test event arg: {0}", a.a);
+                    break;
+                }
+            }
+
+            return new TwitchCheerArgs(user, displayName, amount, message);
         }
 
         private EventArgsBase GenerateTestSubscriptionEvent(IEnumerable<(string attrib, string value)> args)
@@ -189,7 +226,25 @@ namespace LukeBot.Twitch
                 {
                     new() { Name = "User", Description = "Username of Channel Points reward redeemer", Type = EventTestParamType.String },
                     new() { Name = "DisplayName", Description = "Display name of Channel Points reward redeemer", Type = EventTestParamType.String },
-                    new() { Name = "Title", Description = "Title of redeemed Channel Points reward", Type = EventTestParamType.String }
+                    new() { Name = "ID", Description = "ID of redeemed Channel Points reward", Type = EventTestParamType.String },
+                    new() { Name = "Title", Description = "Title of redeemed Channel Points reward", Type = EventTestParamType.String },
+                    new() { Name = "Cost", Description = "Cost of redeemed Channel Points reward", Type = EventTestParamType.Integer },
+                    new() { Name = "Prompt", Description = "Prompt for redeemed Channel Points reward", Type = EventTestParamType.String },
+                    new() { Name = "Message", Description = "Message provided by user while redeeming this Channel Points reward", Type = EventTestParamType.String }
+                }
+            });
+            events.Add(new EventDescriptor()
+            {
+                Name = Events.TWITCH_CHEER,
+                Description = "Twitch bits Cheer. Generated when Twitch user cheers some bits on a channel.",
+                Dispatcher = Constants.QueuedDispatcherForUser(mLBUser),
+                TestGenerator = GenerateTestCheerEvent,
+                TestParams = new List<EventTestParam>()
+                {
+                    new() { Name = "User", Description = "Username of bits cheerer", Type = EventTestParamType.String },
+                    new() { Name = "DisplayName", Description = "Display name of bits cheerer", Type = EventTestParamType.String },
+                    new() { Name = "Amount", Description = "Total amount of bits cheered", Type = EventTestParamType.Integer },
+                    new() { Name = "Message", Description = "Message that caused the cheer", Type = EventTestParamType.String }
                 }
             });
             events.Add(new EventDescriptor()
@@ -230,6 +285,9 @@ namespace LukeBot.Twitch
                 {
                 case Events.TWITCH_CHANNEL_POINTS_REDEMPTION:
                     mChannelPointsRedemptionCallback = e;
+                    break;
+                case Events.TWITCH_CHEER:
+                    mCheerCallback = e;
                     break;
                 case Events.TWITCH_SUBSCRIPTION:
                     mSubscriptionCallback = e;
@@ -338,8 +396,29 @@ namespace LukeBot.Twitch
                 return;
             }
 
-            TwitchChannelPointsRedemptionArgs args = new(data.user_login, data.user_name, data.reward.title);
+            TwitchChannelPointsRedemptionArgs args = new(data.user_login, data.user_name,
+                data.reward.id, data.reward.title, data.reward.cost, data.reward.prompt, data.user_input);
             mChannelPointsRedemptionCallback.PublishEvent(args);
+        }
+
+        private void EmitCheerEvent(EventSub.PayloadEvent eventData)
+        {
+            EventSub.PayloadCheerEvent data = eventData as EventSub.PayloadCheerEvent;
+
+            string login, displayName;
+            if (data.is_anonymous)
+            {
+                login = "anonymous";
+                displayName = "Anonymous";
+            }
+            else
+            {
+                login = data.user_login;
+                displayName = data.user_name;
+            }
+
+            TwitchCheerArgs args = new(login, displayName, data.bits, data.message);
+            mCheerCallback.PublishEvent(args);
         }
 
         private void EmitSubscriptionEvent(TwitchSubscriptionType type, EventSub.PayloadEvent eventData)
@@ -425,6 +504,9 @@ namespace LukeBot.Twitch
             {
             case SUB_CHANNEL_POINTS_REDEMPTION_ADD:
                 EmitChannelPointsEvent(eventData);
+                break;
+            case SUB_CHEER:
+                EmitCheerEvent(eventData);
                 break;
             case SUB_SUBSCRIBE:
                 EmitSubscriptionEvent(TwitchSubscriptionType.New, eventData);

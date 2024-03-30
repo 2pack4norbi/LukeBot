@@ -512,8 +512,35 @@
     alertsWidget.registerMessage("TwitchChannelPointsRedemption", (obj) => {
         alertChain = new AlertChain(obj);
 
-        // TODO
+        // TODO widget's configuration should adjust this
+        switch (obj.Title)
+        {
+        case "Speech in English":
+            if (obj.Message) alertChain.add(new TTSAlert("Brian", obj.Message));
+            break;
+        case "Speech po Polsku":
+            if (obj.Message) alertChain.add(new TTSAlert("Jacek", obj.Message));
+            break;
+        default: break;
+        }
 
+        alertChain.add(new AlertChainComplete());
+        alertChain.play();
+    });
+    alertsWidget.registerMessage("TwitchCheer", (obj) => {
+        alertChain = new AlertChain(obj);
+
+        if (obj.Message) {
+            alertChain.add(new ShowInfoAlert(obj.DisplayName + "<br>cheered " + obj.Amount, obj.Message));
+            alertChain.add(new AudioAlert("/content/success-48018.ogg"));
+            alertChain.add(new TTSAlert("Jacek", obj.Message));
+        } else {
+            alertChain.add(new ShowInfoAlert(obj.DisplayName + "<br>cheered " + obj.Amount, null));
+            alertChain.add(new AudioAlert("/content/success-48018.ogg"));
+            alertChain.add(new TimeoutAlert(5000));
+        }
+
+        alertChain.add(new HideInfoAlert());
         alertChain.add(new AlertChainComplete());
         alertChain.play();
     });
