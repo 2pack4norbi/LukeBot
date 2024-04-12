@@ -178,29 +178,33 @@
     let artistsAnimState = new AnimState(artists, subArtistsMain, subArtistsExtra, subArtistsMainStyle);
     let labelAnimState = new AnimState(label, subLabelMain, subLabelExtra, subLabelMainStyle);
 
+    function updateBasedOnState() {
+        if (playbackState == STATE_PLAYING) {
+            titleAnimState.updateElements(currentTrack.Title);
+            artistsAnimState.updateElements(currentTrack.Artists);
+            labelAnimState.updateElements(currentTrack.Label);
+        } else if (playbackState == STATE_STOPPED) {
+            titleAnimState.updateElements("Paused");
+            artistsAnimState.updateElements("");
+            labelAnimState.updateElements("");
+        } else if (playbackState == STATE_UNLOADED) {
+            titleAnimState.updateElements("");
+            artistsAnimState.updateElements("");
+            labelAnimState.updateElements("");
+        } else {
+            titleAnimState.updateElements("INVALID STATE");
+            artistsAnimState.updateElements("This should not happen");
+            labelAnimState.updateElements("[definitely shouldn't]");
+        }
+
+        titleAnimState.checkIfAnimNeeded();
+        artistsAnimState.checkIfAnimNeeded();
+        labelAnimState.checkIfAnimNeeded();
+    }
+
     function update() {
         if (oldPlaybackState != playbackState) {
-            if (playbackState == STATE_PLAYING) {
-                titleAnimState.updateElements(currentTrack.Title);
-                artistsAnimState.updateElements(currentTrack.Artists);
-                labelAnimState.updateElements(currentTrack.Label);
-            } else if (playbackState == STATE_STOPPED) {
-                titleAnimState.updateElements("Paused");
-                artistsAnimState.updateElements("");
-                labelAnimState.updateElements("");
-            } else if (playbackState == STATE_UNLOADED) {
-                titleAnimState.updateElements("");
-                artistsAnimState.updateElements("");
-                labelAnimState.updateElements("");
-            } else {
-                titleAnimState.updateElements("INVALID STATE");
-                artistsAnimState.updateElements("This should not happen");
-                labelAnimState.updateElements("[definitely shouldn't]");
-            }
-
-            titleAnimState.checkIfAnimNeeded();
-            artistsAnimState.checkIfAnimNeeded();
-            labelAnimState.checkIfAnimNeeded();
+            updateBasedOnState();
         }
     }
 
@@ -208,12 +212,7 @@
         image.src = currentTrack.Image;
         image.onload = () => {
             image.onload = undefined;
-            titleAnimState.updateElements(currentTrack.Title);
-            artistsAnimState.updateElements(currentTrack.Artists);
-            labelAnimState.updateElements(currentTrack.Label);
-            titleAnimState.checkIfAnimNeeded();
-            artistsAnimState.checkIfAnimNeeded();
-            labelAnimState.checkIfAnimNeeded();
+            updateBasedOnState();
         }
     }
 
