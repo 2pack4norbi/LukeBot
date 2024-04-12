@@ -52,7 +52,19 @@ namespace LukeBot.Spotify
             else
                 label = " ";
 
-            SpotifyTrackChangedArgs ret = new SpotifyTrackChangedArgs(artists, title, label, duration);
+            // album image - pick the highest resolution one based by width * height
+            int maxwh = 0;
+            string image = "";
+            foreach (API.Spotify.AlbumImage i in item.album.images)
+            {
+                if (i.width * i.height > maxwh)
+                {
+                    maxwh = i.width * i.height;
+                    image = i.url;
+                }
+            }
+
+            SpotifyTrackChangedArgs ret = new SpotifyTrackChangedArgs(artists, title, label, duration, image);
 
             return ret;
         }

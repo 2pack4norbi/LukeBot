@@ -56,14 +56,16 @@ namespace LukeBot.Spotify.Common
         public string Title { get; private set; }
         public string Label { get; private set; }
         public float Duration { get; private set; }
+        public string Image { get; private set; }
 
-        public SpotifyTrackChangedArgs(string artists, string title, string label, float duration)
+        public SpotifyTrackChangedArgs(string artists, string title, string label, float duration, string image)
             : base(Events.SPOTIFY_TRACK_CHANGED)
         {
             Artists = artists;
             Title = title;
             Label = label;
             Duration = duration;
+            Image = image;
         }
 
         public override string ToString()

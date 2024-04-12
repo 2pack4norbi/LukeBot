@@ -12,7 +12,24 @@
         color: #ffffff;
         font: 48px Arial;
         text-shadow: black 0px 0px 2px, black 0px 0px 2px, black 0px 0px 2px, black 0px 0px 2px, black 0px 0px 2px;
-        height: 100%;
+    }
+
+    .main-div {
+        float: left;
+        clear: none;
+    }
+
+    .album-image-container {
+        float: left;
+        padding-right: 8px;
+    }
+
+    .album-image-container img {
+        max-height: 165px;
+    }
+
+    .now-playing-data-container {
+        overflow: hidden;
     }
 
     #title {
@@ -34,15 +51,21 @@
         color: #ffffff;
     }
 </style>
-
-<div id="title">
-    <span id="subTitleMain" class="field-margin">Title</span><span id="subTitleExtra"></span>
+<div class="main-div">
+<div id="albumImageContainer" class="album-image-container">
+    <img id="albumImage" src="">
 </div>
-<div id="artists">
-    <span id="subArtistsMain" class="field-margin">Artists</span><span id="subArtistsExtra"></span>
+<div id="nowPlayingContainer" class="now-playing-data-container">
+    <div id="title">
+        <span id="subTitleMain" class="field-margin">Title</span><span id="subTitleExtra"></span>
+    </div>
+    <div id="artists">
+        <span id="subArtistsMain" class="field-margin">Artists</span><span id="subArtistsExtra"></span>
+    </div>
+    <div id="label">
+        <span id="subLabelMain" class="field-margin">[Label]</span><span id="subLabelExtra"></span>
+    </div>
 </div>
-<div id="label">
-    <span id="subLabelMain" class="field-margin">[Label]</span><span id="subLabelExtra"></span>
 </div>
 <!-- Debugging section - commented out in release code
 <br />
@@ -69,6 +92,10 @@
     const subLabelExtra = document.getElementById('subLabelExtra');
     let subLabelMainStyle = window.getComputedStyle(subLabelMain);
 
+    const nowPlayingDiv = document.getElementById('nowPlayingContainer');
+
+    let imageSpan = document.getElementById('albumImageContainer');
+    let image = document.getElementById('albumImage');
 
     const STATE_UNLOADED = 0;
     const STATE_STOPPED = 1;
@@ -121,7 +148,7 @@
 
         this.updateElements = function (newContent) {
             this.mainElement.innerHTML = newContent;
-            if (this.mainElement.offsetWidth > window.innerWidth) {
+            if (this.mainElement.offsetWidth > (window.innerWidth - nowPlayingDiv.offsetLeft)) {
                 this.extraElement.innerHTML = newContent;
             } else {
                 this.extraElement.innerHTML = "";
@@ -129,7 +156,7 @@
         }
 
         this.checkIfAnimNeeded = function () {
-            if (this.inProgress && this.mainElement.offsetWidth <= window.innerWidth) {
+            if (this.inProgress && this.mainElement.offsetWidth <= (window.innerWidth - nowPlayingDiv.offsetLeft)) {
                 // shut down unneeded animation
                 this.inProgress = false;
                 this.divElement.style.transform = 'translateX(0px)';
@@ -140,7 +167,7 @@
             this.offset = 0.0;
             this.divElement.style.transform = 'translateX(0px)';
 
-            if (this.mainElement.offsetWidth > window.innerWidth) {
+            if (this.mainElement.offsetWidth > (window.innerWidth - nowPlayingDiv.offsetLeft)) {
                 this.inProgress = true;
                 window.requestAnimationFrame(this.animStep.bind(this));
             }
@@ -152,26 +179,38 @@
     let labelAnimState = new AnimState(label, subLabelMain, subLabelExtra, subLabelMainStyle);
 
     function update() {
-        if (playbackState == STATE_PLAYING) {
+        if (oldPlaybackState != playbackState) {
+            if (playbackState == STATE_PLAYING) {
+                titleAnimState.updateElements(currentTrack.Title);
+                artistsAnimState.updateElements(currentTrack.Artists);
+                labelAnimState.updateElements(currentTrack.Label);
+            } else if (playbackState == STATE_STOPPED) {
+                titleAnimState.updateElements("Paused");
+                artistsAnimState.updateElements("");
+                labelAnimState.updateElements("");
+            } else if (playbackState == STATE_UNLOADED) {
+                titleAnimState.updateElements("");
+                artistsAnimState.updateElements("");
+                labelAnimState.updateElements("");
+            } else {
+                titleAnimState.updateElements("INVALID STATE");
+                artistsAnimState.updateElements("This should not happen");
+                labelAnimState.updateElements("[definitely shouldn't]");
+            }
+
+            titleAnimState.checkIfAnimNeeded();
+            artistsAnimState.checkIfAnimNeeded();
+            labelAnimState.checkIfAnimNeeded();
+        }
+    }
+
+    function updateTrack() {
+        image.src = currentTrack.Image;
+        image.onload = () => {
+            image.onload = undefined;
             titleAnimState.updateElements(currentTrack.Title);
             artistsAnimState.updateElements(currentTrack.Artists);
             labelAnimState.updateElements(currentTrack.Label);
-        } else if (playbackState == STATE_STOPPED) {
-            titleAnimState.updateElements("Paused");
-            artistsAnimState.updateElements("");
-            labelAnimState.updateElements("");
-        } else if (playbackState == STATE_UNLOADED) {
-            titleAnimState.updateElements("");
-            artistsAnimState.updateElements("");
-            labelAnimState.updateElements("");
-        } else {
-            titleAnimState.updateElements("INVALID STATE");
-            artistsAnimState.updateElements("This should not happen");
-            labelAnimState.updateElements("[definitely shouldn't]");
-        }
-
-        if (trackChanged || (oldPlaybackState != playbackState)) {
-            trackChanged = false;
             titleAnimState.checkIfAnimNeeded();
             artistsAnimState.checkIfAnimNeeded();
             labelAnimState.checkIfAnimNeeded();
@@ -181,7 +220,7 @@
     let nowPlayingWidget = new LukeBotWidget();
     nowPlayingWidget.registerMessage("SpotifyTrackChanged", (obj) => {
         currentTrack = obj;
-        trackChanged = true;
+        updateTrack();
     });
     nowPlayingWidget.registerMessage("SpotifyStateUpdate", (obj) => {
         oldPlaybackState = playbackState;

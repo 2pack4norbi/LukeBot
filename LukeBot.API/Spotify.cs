@@ -43,13 +43,26 @@ namespace LukeBot.API
             }
         };
 
+        public class AlbumImage
+        {
+            public string url { get; set; }
+            public int height { get; set; }
+            public int width { get; set; }
+        }
+
+        // There is more fields here but I did not add them, because we don't need them
+        // refer to Spotify API for more info if there's something missing
         public class Album: Response
         {
+            public string album_type { get; set; }
+            public int total_tracks { get; set; }
+            public List<AlbumImage> images { get; set; }
             public List<AlbumCopyright> copyrights { get; set; }
 
             public Album()
             {
-                copyrights = new List<AlbumCopyright>();
+                copyrights = new();
+                images = new();
             }
         }
 
@@ -68,6 +81,7 @@ namespace LukeBot.API
             public string href { get; set; }
             public string id { get; set; }
             public List<AlbumCopyright> copyrights { get; set; }
+            public List<AlbumImage> images { get; set; }
 
             public PlaybackStateAlbum()
             {
