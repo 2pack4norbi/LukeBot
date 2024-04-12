@@ -24,7 +24,8 @@ namespace LukeBot.API
             // if it is a JSON response, it might have error/message fields available
             if (!msg.IsSuccessStatusCode)
             {
-                if (msg.Content.Headers.ContentType.MediaType == "application/json")
+                if (msg.Content != null && msg.Content.Headers != null &&
+                    msg.Content.Headers.ContentType.MediaType == "application/json")
                 {
                     Task<string> respStringTask = msg.Content.ReadAsStringAsync();
                     respStringTask.Wait();
