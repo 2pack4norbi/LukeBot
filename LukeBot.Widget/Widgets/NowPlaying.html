@@ -6,7 +6,6 @@
     body {
         background-color: rgba(0, 0, 0, 0);
         margin: 0px;
-        margin-left: 3px;
         overflow: hidden;
         white-space: nowrap;
         color: #ffffff;
@@ -20,15 +19,36 @@
     }
 
     .album-image-container {
+        position: relative;
         float: left;
         padding-right: 8px;
+        display: inline;
     }
 
-    .album-image-container img {
+    .album-image {
+        position: relative;
         max-height: 165px;
     }
 
+    .album-image-pause-backdrop {
+        position: absolute;
+        top: 0px;
+        left: 0px;
+        background-color: #00000000;
+        backdrop-filter: "none";
+        transition: background-color 0.5s ease-in-out 0.1s, backdrop-filter 0.5s ease-in-out 0.1s;
+    }
+
+    .album-image-pause-icon {
+        position: absolute;
+        top: 0px;
+        left: 0px;
+        transform: "scale(0, 0)";
+        transition: transform 0.6s ease-in-out;
+    }
+
     .now-playing-data-container {
+        position: relative;
         overflow: hidden;
     }
 
@@ -53,7 +73,9 @@
 </style>
 <div class="main-div">
 <div id="albumImageContainer" class="album-image-container">
-    <img id="albumImage" src="">
+    <img id="albumImage" class="album-image" src="">
+    <div id="albumImagePauseBackdrop" class="album-image-pause-backdrop"></div>
+    <img id="albumImagePauseIcon" class="album-image-pause-icon" style="display: none" width="40" height="40" src="/content/pause.svg">
 </div>
 <div id="nowPlayingContainer" class="now-playing-data-container">
     <div id="title">
@@ -96,6 +118,8 @@
 
     let imageSpan = document.getElementById('albumImageContainer');
     let image = document.getElementById('albumImage');
+    let pauseBackdrop = document.getElementById('albumImagePauseBackdrop');
+    let pauseImage = document.getElementById('albumImagePauseIcon');
 
     const STATE_UNLOADED = 0;
     const STATE_STOPPED = 1;
@@ -178,23 +202,53 @@
     let artistsAnimState = new AnimState(artists, subArtistsMain, subArtistsExtra, subArtistsMainStyle);
     let labelAnimState = new AnimState(label, subLabelMain, subLabelExtra, subLabelMainStyle);
 
+    function showPauseIcon() {
+        let paddingSizeX = (image.offsetWidth / 2) - 20;
+        let paddingSizeY = (image.offsetHeight / 2) - 20;
+        let pausePosX = image.offsetTop + paddingSizeX;
+        let pausePosY = image.offsetLeft + paddingSizeY;
+        pauseImage.style.display = "block";
+        pauseImage.style.padding = `${paddingSizeY}px ${paddingSizeX}px ${paddingSizeY}px ${paddingSizeX}px`;
+
+        pauseBackdrop.style.padding = `${image.offsetHeight}px ${image.offsetWidth}px 0px 0px`;
+
+        // transition triggers
+        pauseBackdrop.style.backdropFilter = "blur(10px)";
+        pauseBackdrop.style.backgroundColor = "#c5c5c57c";
+
+        pauseImage.style.transform = "scale(1, 1)";
+    }
+
+    function hidePauseIcon() {
+        pauseBackdrop.style.backdropFilter = "none";
+        pauseBackdrop.style.backgroundColor = "#00000000";
+
+        pauseImage.style.transform = "scale(0, 0)";
+    }
+
     function updateBasedOnState() {
         if (playbackState == STATE_PLAYING) {
             titleAnimState.updateElements(currentTrack.Title);
             artistsAnimState.updateElements(currentTrack.Artists);
             labelAnimState.updateElements(currentTrack.Label);
+            hidePauseIcon();
+            image.style.visibility = "visible";
         } else if (playbackState == STATE_STOPPED) {
             titleAnimState.updateElements("Paused");
             artistsAnimState.updateElements("");
             labelAnimState.updateElements("");
+            showPauseIcon();
+            image.style.visibility = "visible";
         } else if (playbackState == STATE_UNLOADED) {
             titleAnimState.updateElements("");
             artistsAnimState.updateElements("");
             labelAnimState.updateElements("");
+            image.style.visibility = "hidden";
         } else {
             titleAnimState.updateElements("INVALID STATE");
             artistsAnimState.updateElements("This should not happen");
             labelAnimState.updateElements("[definitely shouldn't]");
+            image.style.visibility = "hidden";
         }
 
         titleAnimState.checkIfAnimNeeded();
