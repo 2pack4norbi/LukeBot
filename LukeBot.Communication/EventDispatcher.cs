@@ -157,6 +157,7 @@ namespace LukeBot.Communication
         private Thread mThread = null;
         private EventDispatcherState mState = EventDispatcherState.Stopped;
         private Queue<EventQueueItem> mEvents = new();
+        private ManualResetEvent mThreadStartedEvent = new(false);
         private ManualResetEvent mQueueAvailableEvent = new(false);
         private Mutex mEventQueueMutex = new();
         private EventQueueItem mCurrentEvent = null;
@@ -210,6 +211,7 @@ namespace LukeBot.Communication
         private void WorkerMain()
         {
             mState = EventDispatcherState.Running;
+            mThreadStartedEvent.Set();
 
             while (true)
             {
@@ -258,6 +260,7 @@ namespace LukeBot.Communication
                 return;
 
             mThread.Start();
+            mThreadStartedEvent.WaitOne();
         }
 
         public override void Stop()
@@ -273,6 +276,8 @@ namespace LukeBot.Communication
                 mEvents.Clear();
                 mEvents = null;
                 mEventQueueMutex.ReleaseMutex();
+
+                mThreadStartedEvent.Reset();
             }
         }
 

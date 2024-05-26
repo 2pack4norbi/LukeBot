@@ -62,6 +62,8 @@ namespace LukeBot.Tests.Communication
 
             for (int i = 0; i < EVENT_COUNT; ++i)
             {
+                eventArgs[i] = new();
+
                 events[i] = new(new EventDescriptor()
                 {
                     Name = TEST_EVENT_NAME + i.ToString(),

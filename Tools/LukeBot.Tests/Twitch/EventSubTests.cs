@@ -134,6 +134,8 @@ namespace LukeBot.Tests.Twitch
         private static readonly string TWITCH_MOCK_USERID = "420691234";
         private static readonly string TWITCH_MOCK_URI = "ws://127.0.0.1:8080/ws";
 
+        private EventSubClient es = null;
+
         private TestContext testContext;
         public TestContext TestContext
         {
@@ -217,57 +219,60 @@ namespace LukeBot.Tests.Twitch
             Conf.Initialize(Constants.TEST_PROPS_DATA_FILE);
             Comms.Initialize();
             Comms.Event.AddUser(EVENT_SUB_TEST_USER);
+            Comms.Event.User(EVENT_SUB_TEST_USER).AddEventDispatcher(
+                LukeBot.Twitch.Constants.QueuedDispatcherForUser(EVENT_SUB_TEST_USER), EventDispatcherType.Queued
+            );
+        }
+
+        [TestInitialize]
+        public async Task EventSub_InitializeTest()
+        {
+            if (es != null)
+            {
+                EventSub_CleanupTest();
+            }
+
+            await EnsureTwitchCLIStarted();
+
+            es = new (EVENT_SUB_TEST_USER);
+        }
+
+        [TestCleanup]
+        public void EventSub_CleanupTest()
+        {
+            es.RequestShutdown();
+            es.WaitForShutdown();
+            es = null;
         }
 
         [TestMethodSkippedWithoutTwitchCLI]
-        public async Task EventSub_Connect()
+        public void EventSub_Connect()
         {
-            await EnsureTwitchCLIStarted();
-
-            EventSubClient es = new(EVENT_SUB_TEST_USER);
             es.Connect(null, TWITCH_MOCK_USERID, TWITCH_MOCK_URI);
-
-            es.RequestShutdown();
-            es.WaitForShutdown();
         }
 
         [TestMethodSkippedWithoutTwitchCLI]
         public async Task EventSub_ConnectAsync()
         {
-            await EnsureTwitchCLIStarted();
-
-            EventSubClient es = new(EVENT_SUB_TEST_USER);
             await es.ConnectAsync(null, TWITCH_MOCK_USERID, TWITCH_MOCK_URI);
-
-            es.RequestShutdown();
-            es.WaitForShutdown();
         }
 
         [TestMethodSkippedWithoutTwitchCLI]
         public async Task EventSub_Subscribe()
         {
-            await EnsureTwitchCLIStarted();
-
-            EventSubClient es = new(EVENT_SUB_TEST_USER);
             await es.ConnectAsync(null, TWITCH_MOCK_USERID, TWITCH_MOCK_URI);
 
             List<string> events = new();
             events.Add(EventSubClient.SUB_CHANNEL_POINTS_REDEMPTION_ADD);
             events.Add(EventSubClient.SUB_CHANNEL_POINTS_REDEMPTION_UPDATE);
             es.Subscribe(events);
-
-            es.RequestShutdown();
-            es.WaitForShutdown();
         }
 
         [TestMethodSkippedWithoutTwitchCLI]
         public async Task EventSub_Reconnect()
         {
-            await EnsureTwitchCLIStarted();
-
             AutoResetEvent reconnectedEvent = new(false);
 
-            EventSubClient es = new(EVENT_SUB_TEST_USER);
             es.Reconnected += (e, args) =>
             {
                 reconnectedEvent.Set();
@@ -286,19 +291,11 @@ namespace LukeBot.Tests.Twitch
             Assert.AreEqual(0, reconnectCall.ExitCode);
 
             reconnectedEvent.WaitOne(5 * 1000);
-
-            es.RequestShutdown();
-            es.WaitForShutdown();
         }
 
         [TestMethodSkippedWithoutTwitchCLI]
         public async Task EventSub_Notification()
         {
-            await EnsureTwitchCLIStarted();
-
-            // Create EventSubClient instance to register it in event system
-            EventSubClient es = new(EVENT_SUB_TEST_USER);
-
             AutoResetEvent notificationReceivedEvent = new(false);
             bool castedSuccessfully = false;
             Comms.Event.User(EVENT_SUB_TEST_USER).Event(Events.TWITCH_CHANNEL_POINTS_REDEMPTION).Endpoint += (e, a) =>
@@ -330,9 +327,6 @@ namespace LukeBot.Tests.Twitch
             notificationReceivedEvent.WaitOne(5 * 1000);
 
             Assert.IsTrue(castedSuccessfully);
-
-            es.RequestShutdown();
-            es.WaitForShutdown();
         }
 
         [ClassCleanup]

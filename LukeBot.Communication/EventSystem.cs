@@ -336,6 +336,7 @@ namespace LukeBot.Communication
 
         ~EventSystem()
         {
+            mUserToCollection.Clear();
         }
 
         public void AddUser(string lbUser)
