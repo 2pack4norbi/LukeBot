@@ -1,5 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Globalization;
+using LukeBot.Common;
 
 namespace LukeBot.Tests
 {
@@ -9,7 +10,7 @@ namespace LukeBot.Tests
         [AssemblyInitialize]
         public static void AssemblySetup(TestContext context)
         {
-            Common.FileUtils.SetUnifiedCWD();
+            FileUtils.SetUnifiedCWD();
             CultureInfo.CurrentCulture = new CultureInfo("en-US", false);
         }
 

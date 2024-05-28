@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net;
 using System.Runtime.InteropServices;
@@ -64,6 +65,68 @@ namespace LukeBot.Common
             }
 
             return result;
+        }
+
+        // Parse a list of strings into a list of key-value tuples. Useful for providing arguments
+        // to inner systems of LukeBot (ex. EventSystem's test command, or Widget's config update)
+        // Notable parsing details:
+        //  - Key always has to be a string without spaces
+        //  - There must be no spaces surrounding the = sign, so always <key>=<value>
+        //  - Longer strings with spaces are allowed if put in quotation marks
+        //  - No escape characters are supported (yet) (TODO?)
+        // Following args list is valid:
+        //  Tier=2 Message="This is a message!" User=username
+        // Produces three tuples (all strings):
+        //  ("Tier", "2")
+        //  ("Message", "This is a message!")
+        //  ("User", "username")
+        // TestEvent() will further parse the data for correctness against Event's
+        // TestArgs list, if available.
+        public static IEnumerable<(string attrib, string value)> ConvertArgStringsToTuples(IEnumerable<string> argsList)
+        {
+            List<(string attrib, string value)> ret = new();
+
+            string a = "", v = "";
+            bool readingString = false;
+            foreach (string s in argsList)
+            {
+                if (readingString)
+                {
+                    if (s.EndsWith('"'))
+                    {
+                        readingString = false;
+                        v += ' ' + s.Substring(0, s.Length - 1);
+                        ret.Add((a, v));
+                    }
+                    else
+                    {
+                        v += ' ' + s;
+                    }
+
+                    continue;
+                }
+
+                string[] tokens = s.Split('=');
+                if (tokens.Length != 2)
+                {
+                    throw new ArgumentException("Failed to parse test event attributes");
+                }
+
+                a = tokens[0];
+
+                if (tokens[1].StartsWith('"'))
+                {
+                    v = tokens[1].Substring(1);
+                    readingString = true;
+                }
+                else
+                {
+                    v = tokens[1];
+                    ret.Add((a, v));
+                }
+            }
+
+            return ret;
         }
     }
 }

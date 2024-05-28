@@ -37,6 +37,8 @@ namespace LukeBot.Config
             return mStore.Get(path).Get<T>();
         }
 
+        // TODO modify should probably be smarter than that
+        // (as in - if Config field does not exist, create it automatically)
         public static void Modify<T>(Path path, T value)
         {
             mStore.Modify<T>(path, value);

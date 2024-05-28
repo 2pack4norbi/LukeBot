@@ -7,6 +7,7 @@ using LukeBot.Communication;
 using LukeBot.Logging;
 using LukeBot.Module;
 using LukeBot.Twitch.EventSub;
+using LukeBot.Twitch.Common;
 using Widget = LukeBot.Widget;
 
 

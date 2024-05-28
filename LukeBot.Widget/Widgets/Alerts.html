@@ -173,7 +173,7 @@
             this.mTitlePath.setAttribute("d", "M5,5 L605,5 L515,95 L5,95 Z");
             this.mDetailsPath.setAttribute("d", "M5,5 L515,5 L515,125 L5,125 Z");
 
-            // #2 - we have to hide elements to the left instead of right
+            // #2 - we have to hide elements to the left instead of left
             this.mTitleElement.classList.remove(this.mHiddenClassName);
             this.mDetailsElement.classList.remove(this.mHiddenClassName);
 
@@ -184,6 +184,29 @@
             // #3 - Move foreign objects to new locations
             this.mTitleFObj.setAttribute("x", "4");
             this.mDetailsFObj.setAttribute("x", "4");
+        }
+
+        alignRight() {
+            // redo some control things to make the widget align to the right side
+            this.mAlignment = "right";
+
+            this.mRootElement.style.float = "right";
+
+            // #1 - SVG paths must be changed
+            this.mTitlePath.setAttribute("d", "M605,5 L5,5 L95,95 L605,95 Z");
+            this.mDetailsPath.setAttribute("d", "M605,5 L95,5 L95,125 L605,125 Z");
+
+            // #2 - we have to hide elements to the right instead of right
+            this.mTitleElement.classList.remove(this.mHiddenClassName);
+            this.mDetailsElement.classList.remove(this.mHiddenClassName);
+
+            this.mHiddenClassName = "alert-element-hidden-right";
+            this.mTitleElement.classList.add(this.mHiddenClassName);
+            this.mDetailsElement.classList.add(this.mHiddenClassName);
+
+            // #3 - Move foreign objects to new locations
+            this.mTitleFObj.setAttribute("x", "90");
+            this.mDetailsFObj.setAttribute("x", "94");
         }
 
         detailsAnimFrame(timeStamp) {
@@ -512,9 +535,10 @@
     });
     alertsWidget.registerMessage("AlertWidgetConfig", (obj) => {
         // picked up configuration message; read and adjust
-        // TODO once Widget configuration is unified, this has to be changed
         if (obj.Alignment && obj.Alignment == "left") {
             infoPanel.alignLeft();
+        } else if (obj.Alignment && obj.Alignment == "right") {
+            infoPanel.alignRight();
         }
 
         alertsWidget.send(new WidgetEventCompletionStatus(0, "Configuration applied"));

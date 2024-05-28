@@ -3,6 +3,7 @@ using LukeBot.Communication.Common;
 using LukeBot.Logging;
 using LukeBot.Twitch.Common;
 using LukeBot.Widget.Common;
+using Newtonsoft.Json;
 
 
 namespace LukeBot.Widget
@@ -19,7 +20,7 @@ namespace LukeBot.Widget
      */
     public class Alerts: IWidget
     {
-        private class AlertInterrupt : EventArgsBase
+        private class AlertInterrupt: EventArgsBase
         {
             public AlertInterrupt()
                 : base("AlertInterrupt")
@@ -27,7 +28,7 @@ namespace LukeBot.Widget
             }
         }
 
-        private class AlertWidgetConfig : EventArgsBase
+        private class AlertWidgetConfig: WidgetConfiguration
         {
             public string Alignment { get; set; }
 
@@ -36,10 +37,49 @@ namespace LukeBot.Widget
             {
                 Alignment = "right";
             }
+
+            public override void DeserializeConfiguration(string configString)
+            {
+                AlertWidgetConfig config = JsonConvert.DeserializeObject<AlertWidgetConfig>(configString);
+
+                Alignment = config.Alignment;
+            }
+
+            public override void ValidateUpdate(string field, string value)
+            {
+                switch (field)
+                {
+                case "Alignment":
+                {
+                    if (value != "left" && value != "right")
+                        throw new WidgetConfigurationUpdateException("Invalid Alignment value: {0}. Allowed values: \"left\" or \"right\"", value);
+                    break;
+                }
+                default:
+                    Logger.Log().Warning("Unrecognized Alert Widget config field: {0}", field);
+                    break;
+                }
+            }
+
+            public override void Update(string field, string value)
+            {
+                switch (field)
+                {
+                case "Alignment": Alignment = value; break;
+                }
+            }
+
+            public override string ToFormattedString()
+            {
+                return "  Alignment: " + Alignment;
+            }
         }
 
         private void AwaitEventCompletion()
         {
+            if (!Connected)
+                return;
+
             WidgetEventCompletionResponse resp = RecvFromWS<WidgetEventCompletionResponse>();
             if (resp == null)
             {
@@ -98,20 +138,20 @@ namespace LukeBot.Widget
 
         protected override void OnConnected()
         {
-            AlertWidgetConfig config = new AlertWidgetConfig();
-            // TODO hacky, make it work properly and implement widget config system
-            WidgetDesc desc = GetDesc();
-            if (desc.Name != null && desc.Name.EndsWith("_Left"))
-                config.Alignment = "left";
-            SendToWS(config);
+            SendToWS(mConfiguration);
+            AwaitEventCompletion();
+        }
 
+        protected override void OnConfigurationUpdate()
+        {
+            SendToWS(mConfiguration);
             AwaitEventCompletion();
         }
 
         public Alerts(string lbUser, string id, string name)
-            : base("LukeBot.Widget/Widgets/Alerts.html", id, name)
+            : base(lbUser, "LukeBot.Widget/Widgets/Alerts.html", id, name, new AlertWidgetConfig())
         {
-            EventCollection collection = Comms.Event.User(lbUser);
+            EventCollection collection = Comms.Event.User(mLBUser);
 
             collection.Event(Events.TWITCH_CHANNEL_POINTS_REDEMPTION).Endpoint += OnSimpleEvent<TwitchChannelPointsRedemptionArgs>;
             collection.Event(Events.TWITCH_CHANNEL_POINTS_REDEMPTION).InterruptEndpoint += OnEventInterrupt;

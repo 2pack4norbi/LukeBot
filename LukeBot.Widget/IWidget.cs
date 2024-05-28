@@ -37,16 +37,21 @@ namespace LukeBot.Widget
         public string ID { get; private set; }
         public string Name { get; private set; }
         public string mWidgetFilePath;
+        protected string mLBUser;
         private List<string> mHead;
         protected WebSocket mWS;
+        protected WidgetConfiguration mConfiguration;
         private ManualResetEvent mWSLifetimeEndEvent;
         private AutoResetEvent mWSRecvAvailableEvent;
         private Task mWSLifetimeTask;
         private Thread mWSMessagingThread;
         private bool mWSThreadDone;
         private Queue<string> mWSRecvQueue;
+        private Config.Path mConfigurationPath;
 
+        protected bool Connected { get { return mWS != null && mWS.State == WebSocketState.Open; } }
         protected abstract void OnConnected();
+        protected virtual void OnConfigurationUpdate() {}
 
         private string GetWidgetCode()
         {
@@ -187,7 +192,24 @@ namespace LukeBot.Widget
             t.Wait();
         }
 
+        protected void LoadConfiguration()
+        {
+            if (Conf.TryGet<string>(mConfigurationPath, out string configStr))
+                mConfiguration.DeserializeConfiguration(configStr);
+        }
 
+        protected void SaveConfiguration()
+        {
+            if (mConfiguration.EventName == Constants.EMPTY_WIDGET_CONFIGURATION_NAME)
+                return; // skip saving config for widgets with no config
+
+            string widgetConfigStr = mConfiguration.SerializeConfiguration();
+
+            if (Conf.Exists(mConfigurationPath))
+                Conf.Modify<string>(mConfigurationPath, widgetConfigStr);
+            else
+                Conf.Add(mConfigurationPath, Property.Create<string>(widgetConfigStr));
+        }
 
 
         internal Task AcquireWS(WebSocket ws)
@@ -211,12 +233,13 @@ namespace LukeBot.Widget
         }
 
 
-        public IWidget(string widgetFilePath, string id, string name)
+        public IWidget(string lbUser, string widgetFilePath, string id, string name, WidgetConfiguration config)
         {
             mWidgetFilePath = widgetFilePath;
 
             ID = id;
             Name = name;
+            mLBUser = lbUser;
             mHead = new List<string>();
             mWS = null;
             mWSLifetimeEndEvent = new ManualResetEvent(false);
@@ -224,6 +247,18 @@ namespace LukeBot.Widget
             mWSThreadDone = false;
             mWSRecvQueue = new Queue<string>();
             mWSLifetimeTask = null;
+            mConfigurationPath = Config.Path.Start()
+                .Push(Constants.PROP_STORE_WIDGET_DOMAIN)
+                .Push(mLBUser)
+                .Push(ID)
+                .Push(Constants.PROP_CONFIG);
+            mConfiguration = config;
+            LoadConfiguration();
+        }
+
+        public IWidget(string lbUser, string widgetFilePath, string id, string name)
+            : this(lbUser, widgetFilePath, id, name, new EmptyWidgetConfiguration())
+        {
         }
 
         public string GetPage()
@@ -243,6 +278,29 @@ namespace LukeBot.Widget
             page += "</body></html>";
 
             return page;
+        }
+
+        public void ValidateConfigUpdate(IEnumerable<(string, string)> changes)
+        {
+            foreach ((string f, string v) change in changes)
+            {
+                mConfiguration.ValidateUpdate(change.f, change.v);
+            }
+        }
+
+        public void UpdateConfig(IEnumerable<(string, string)> changes)
+        {
+            foreach ((string f, string v) change in changes)
+            {
+                mConfiguration.Update(change.f, change.v);
+            }
+
+            OnConfigurationUpdate();
+        }
+
+        public WidgetConfiguration GetConfig()
+        {
+            return mConfiguration;
         }
 
         public WidgetDesc GetDesc()
@@ -269,6 +327,8 @@ namespace LukeBot.Widget
         {
             if (mWSMessagingThread != null)
                 mWSMessagingThread.Join();
+
+            SaveConfiguration();
         }
     }
 }

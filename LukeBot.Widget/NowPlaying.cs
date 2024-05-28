@@ -43,13 +43,13 @@ namespace LukeBot.Widget
         }
 
         public NowPlaying(string lbUser, string id, string name)
-            : base("LukeBot.Widget/Widgets/NowPlaying.html", id, name)
+            : base(lbUser, "LukeBot.Widget/Widgets/NowPlaying.html", id, name)
         {
             mState = null;
             mCurrentTrack = null;
 
-            Comms.Event.User(lbUser).Event(Events.SPOTIFY_STATE_UPDATE).Endpoint += OnStateUpdate;
-            Comms.Event.User(lbUser).Event(Events.SPOTIFY_TRACK_CHANGED).Endpoint += OnTrackChanged;
+            Comms.Event.User(mLBUser).Event(Events.SPOTIFY_STATE_UPDATE).Endpoint += OnStateUpdate;
+            Comms.Event.User(mLBUser).Event(Events.SPOTIFY_TRACK_CHANGED).Endpoint += OnTrackChanged;
         }
 
         public override WidgetType GetWidgetType()

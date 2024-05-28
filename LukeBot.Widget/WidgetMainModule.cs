@@ -147,6 +147,16 @@ namespace LukeBot.Widget
             mUsers[lbUser].DeleteWidget(id);
         }
 
+        public void UpdateWidgetConfiguration(string lbUser, string id, IEnumerable<(string, string)> changes)
+        {
+            mUsers[lbUser].UpdateWidgetConfiguration(id, changes);
+        }
+
+        public WidgetConfiguration GetWidgetConfiguration(string lbUser, string id)
+        {
+            return mUsers[lbUser].GetWidgetConfiguration(id);
+        }
+
         public UserModuleDescriptor GetUserModuleDescriptor()
         {
             UserModuleDescriptor umd = new UserModuleDescriptor();

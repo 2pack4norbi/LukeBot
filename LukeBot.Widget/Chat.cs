@@ -37,11 +37,11 @@ namespace LukeBot.Widget
         }
 
         public Chat(string lbUser, string id, string name)
-            : base("LukeBot.Widget/Widgets/Chat.html", id, name)
+            : base(lbUser, "LukeBot.Widget/Widgets/Chat.html", id, name)
         {
-            Comms.Event.User(lbUser).Event(Events.TWITCH_CHAT_MESSAGE).Endpoint += OnMessage;
-            Comms.Event.User(lbUser).Event(Events.TWITCH_CHAT_CLEAR_USER).Endpoint += OnClearChat;
-            Comms.Event.User(lbUser).Event(Events.TWITCH_CHAT_CLEAR_MESSAGE).Endpoint += OnClearMsg;
+            Comms.Event.User(mLBUser).Event(Events.TWITCH_CHAT_MESSAGE).Endpoint += OnMessage;
+            Comms.Event.User(mLBUser).Event(Events.TWITCH_CHAT_CLEAR_USER).Endpoint += OnClearChat;
+            Comms.Event.User(mLBUser).Event(Events.TWITCH_CHAT_CLEAR_MESSAGE).Endpoint += OnClearMsg;
         }
 
         public override WidgetType GetWidgetType()

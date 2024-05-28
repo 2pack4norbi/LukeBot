@@ -55,7 +55,7 @@ namespace LukeBot.Widget
         {
             switch (type)
             {
-            case WidgetType.echo: return new Echo(id, name);
+            case WidgetType.echo: return new Echo(mLBUser, id, name);
             case WidgetType.nowplaying: return new NowPlaying(mLBUser, id, name);
             case WidgetType.chat: return new Chat(mLBUser, id, name);
             case WidgetType.alerts: return new Alerts(mLBUser, id, name);
@@ -180,6 +180,18 @@ namespace LukeBot.Widget
                 mNameToId.Remove(id);
 
             RemoveWidgetFromConfig(actualId);
+        }
+
+        public WidgetConfiguration GetWidgetConfiguration(string id)
+        {
+            return mWidgets[GetActualWidgetId(id)].GetConfig();
+        }
+
+        public void UpdateWidgetConfiguration(string id, IEnumerable<(string, string)> changes)
+        {
+            IWidget w = mWidgets[GetActualWidgetId(id)];
+            w.ValidateConfigUpdate(changes);
+            w.UpdateConfig(changes);
         }
 
         public void RequestShutdown()
