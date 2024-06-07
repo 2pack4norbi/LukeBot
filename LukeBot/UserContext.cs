@@ -20,7 +20,7 @@ namespace LukeBot
         private const string PROP_STORE_PASSWORD = "password";
 
         private Dictionary<ModuleType, IUserModule> mModules = new();
-        private PasswordData mPasswordData;
+        private PasswordData mPasswordData = null;
 
         // user data management
         private void UpdateUserDataInConfig()
@@ -35,6 +35,8 @@ namespace LukeBot
                 Conf.Add(passwordDataPath, Property.Create<PasswordData>(mPasswordData));
             else
                 Conf.Modify<PasswordData>(passwordDataPath, mPasswordData);
+
+            Conf.Save();
         }
 
         private void LoadUserDataFromConfig()
@@ -48,7 +50,7 @@ namespace LukeBot
             if (!Conf.TryGet<PasswordData>(passwordDataPath, out mPasswordData))
             {
                 // no password, issue a warning
-                UserInterface.CommandLine.Message("User has no password set! Remember to set your password.");
+                Logger.Log().Warning("User " + Username + " has no password set! Remember to set your password.");
                 mPasswordData = null;
             }
         }
@@ -176,6 +178,7 @@ namespace LukeBot
         public void SetPassword(byte[] passwordHash)
         {
             mPasswordData = PasswordData.Create(passwordHash);
+            UpdateUserDataInConfig();
         }
 
         // Set a new password based on plaintext. This path should
@@ -183,6 +186,16 @@ namespace LukeBot
         public void SetPassword(string newPassword)
         {
             mPasswordData = PasswordData.Create(newPassword);
+            UpdateUserDataInConfig();
+        }
+
+        // Validate if a password string is correct. Use ONLY locally.
+        public bool ValidatePassword(string password)
+        {
+            if (password.Length == 0 && mPasswordData == null)
+                return true;
+
+            return mPasswordData.Equals(password);
         }
 
         // Validates if password is correct. For remote connections only.

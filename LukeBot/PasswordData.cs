@@ -3,6 +3,7 @@ using System.Linq;
 using System.Text;
 using System.Security.Cryptography;
 using System.Runtime.CompilerServices;
+using Newtonsoft.Json;
 
 [assembly: InternalsVisibleTo("LukeBot.Tests")]
 
@@ -15,16 +16,30 @@ namespace LukeBot
         // that way remote client can generate and send us only H(P)
         // which we'll internally combine with S and get something
         // to compare with saved hash
+        [JsonProperty]
         private byte[] hash = null;
+        [JsonProperty]
         private byte[] salt = null;
-        private const int SALT_SIZE = 64;
 
+        private const int SALT_SIZE = 32;
+
+        [JsonIgnore]
         public byte[] Hash
         {
             get
             {
                 return hash;
             }
+        }
+
+        public PasswordData()
+        {
+        }
+
+        public PasswordData(byte[] hash, byte[] salt)
+        {
+            this.hash = hash;
+            this.salt = salt;
         }
 
         public static PasswordData Create(byte[] passwordHash)

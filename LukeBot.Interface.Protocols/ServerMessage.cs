@@ -5,7 +5,7 @@ namespace LukeBot.Interface.Protocols
 {
     public class SessionData
     {
-        public string Cookie { get; private set; }
+        public string Cookie { get; set; }
 
         internal SessionData()
         {
@@ -16,13 +16,25 @@ namespace LukeBot.Interface.Protocols
         {
             Cookie = cookie;
         }
+
+        public override string ToString()
+        {
+            return "Cookie: " + Cookie;
+        }
     }
 
     public class ServerMessage
     {
         public ServerMessageType Type { get; private set; }
-        public SessionData Session { get; private set; }
-        public string MsgID { get; private set; }
+        public SessionData Session { get; set; }
+        public string MsgID { get; set; }
+
+        public ServerMessage()
+        {
+            Type = ServerMessageType.None;
+            Session = null;
+            MsgID = null;
+        }
 
         protected ServerMessage(ServerMessageType t, SessionData session)
         {
@@ -37,6 +49,11 @@ namespace LukeBot.Interface.Protocols
             Session = session;
             MsgID = id;
         }
+
+        public override string ToString()
+        {
+            return "Type: " + Type.ToString() + "; Session: { " + (Session != null ? Session.ToString() : "null") + " }; ID: " + MsgID;
+        }
     }
 
     // Login message - sent from client to server to start the connection
@@ -47,13 +64,26 @@ namespace LukeBot.Interface.Protocols
     // data attached to it.
     public class LoginServerMessage: ServerMessage
     {
-        public string User { get; private set; }
-        public string PasswordHashBase64 { get; private set; }
+        public string User { get; set; }
+        public string PasswordHashBase64 { get; set; }
+
+        public LoginServerMessage()
+            : base(ServerMessageType.Login, null, "")
+        {
+            User = "";
+            PasswordHashBase64 = "";
+        }
 
         public LoginServerMessage(string u, byte[] p)
-            : base(ServerMessageType.Login, new SessionData())
+            : base(ServerMessageType.Login, null)
         {
+            User = u;
+            PasswordHashBase64 = Convert.ToBase64String(p);
+        }
 
+        public override string ToString()
+        {
+            return base.ToString() + "; User: " + User + "; PwdHashB64: " + PasswordHashBase64;
         }
     }
 
@@ -61,12 +91,23 @@ namespace LukeBot.Interface.Protocols
     // CLI LukeBot command.
     public class CommandServerMessage: ServerMessage
     {
-        public string Command { get; private set; }
+        public string Command { get; set; }
+
+        public CommandServerMessage()
+            : base(ServerMessageType.Command, null, "")
+        {
+            Command = "";
+        }
 
         public CommandServerMessage(SessionData session, string cmd)
             : base(ServerMessageType.Command, session)
         {
             Command = cmd;
+        }
+
+        public override string ToString()
+        {
+            return base.ToString() + "; Command: " + Command;
         }
     }
 
@@ -75,12 +116,23 @@ namespace LukeBot.Interface.Protocols
     // with no further interaction needed
     public class NotifyServerMessage: ServerMessage
     {
-        public string Message { get; private set; }
+        public string Message { get; set; }
+
+        public NotifyServerMessage()
+            : base(ServerMessageType.Notify, null, "")
+        {
+            Message = "";
+        }
 
         public NotifyServerMessage(SessionData session, string msg)
             : base(ServerMessageType.Notify, session)
         {
             Message = msg;
+        }
+
+        public override string ToString()
+        {
+            return base.ToString() + "; Message: " + Message;
         }
     }
 
@@ -89,14 +141,64 @@ namespace LukeBot.Interface.Protocols
     // the server.
     public class QueryServerMessage: ServerMessage
     {
-        public string Query { get; private set; }
-        public bool IsYesNo { get; private set; }
+        public string Query { get; set; }
+        public bool IsYesNo { get; set; }
+
+        public QueryServerMessage()
+            : base(ServerMessageType.Query, null, "")
+        {
+            Query = "";
+            IsYesNo = false;
+        }
 
         public QueryServerMessage(SessionData session, string q, bool yn)
             : base(ServerMessageType.Query, session)
         {
             Query = q;
             IsYesNo = yn;
+        }
+
+        public override string ToString()
+        {
+            return base.ToString() + "; Query: " + Query + "; YesNo: " + IsYesNo;
+        }
+    }
+
+    public class PasswordChangeServerMessage: ServerMessage
+    {
+        public string CurrentPasswordB64 { get; set; }
+        public string NewPasswordB64 { get; set; }
+
+        public PasswordChangeServerMessage()
+            : base(ServerMessageType.PasswordChange, null, "")
+        {
+            CurrentPasswordB64 = "";
+            NewPasswordB64 = "";
+        }
+
+        public PasswordChangeServerMessage(SessionData session, string curPwdB64, string newPwdB64)
+            : base(ServerMessageType.PasswordChange, session)
+        {
+            CurrentPasswordB64 = curPwdB64;
+            NewPasswordB64 = newPwdB64;
+        }
+
+        public override string ToString()
+        {
+            return base.ToString() + "; Current: " + CurrentPasswordB64 + "; New: " + NewPasswordB64;
+        }
+    }
+
+    public class LogoutServerMessage: ServerMessage
+    {
+        public LogoutServerMessage()
+            : base(ServerMessageType.Logout, null, "")
+        {
+        }
+
+        public LogoutServerMessage(SessionData session)
+            : base(ServerMessageType.Logout, session)
+        {
         }
     }
 
@@ -109,9 +211,17 @@ namespace LukeBot.Interface.Protocols
     // and close the connection.
     public class LoginResponseServerMessage: ServerMessage
     {
-        public string User { get; private set; }
-        public bool Success { get; private set; }
-        public string Error { get; private set; }
+        public string User { get; set; }
+        public bool Success { get; set; }
+        public string Error { get; set; }
+
+        public LoginResponseServerMessage()
+            : base(ServerMessageType.LoginResponse, null, "")
+        {
+            User = "";
+            Success = false;
+            Error = "";
+        }
 
         // successful login response - attaches session data
         public LoginResponseServerMessage(LoginServerMessage login, SessionData session)
@@ -130,6 +240,11 @@ namespace LukeBot.Interface.Protocols
             Success = false;
             Error = error;
         }
+
+        public override string ToString()
+        {
+            return base.ToString() + "; User: " + User + "; Success: " + Success + (Success ? "" : "; Error: " + Error);
+        }
     }
 
     // Command response message - sent from server to client to inform about command
@@ -143,12 +258,23 @@ namespace LukeBot.Interface.Protocols
     // end of command execution.
     public class CommandResponseServerMessage: ServerMessage
     {
-        public ServerCommandStatus Status { get; private set; }
+        public ServerCommandStatus Status { get; set; }
+
+        public CommandResponseServerMessage()
+            : base(ServerMessageType.CommandResponse, null, "")
+        {
+            Status = ServerCommandStatus.UnknownCommand;
+        }
 
         public CommandResponseServerMessage(CommandServerMessage cmd, ServerCommandStatus status)
             : base(ServerMessageType.Query, cmd.Session, cmd.MsgID)
         {
             Status = status;
+        }
+
+        public override string ToString()
+        {
+            return base.ToString() + "; Status: " + Status.ToString();
         }
     }
 
@@ -157,14 +283,26 @@ namespace LukeBot.Interface.Protocols
     // the server.
     public class QueryResponseServerMessage: ServerMessage
     {
-        public string Response { get; private set; }
-        public bool IsYesNo { get; private set; }
+        public string Response { get; set; }
+        public bool IsYesNo { get; set; }
+
+        public QueryResponseServerMessage()
+            : base(ServerMessageType.CommandResponse, null, "")
+        {
+            Response = "";
+            IsYesNo = false;
+        }
 
         public QueryResponseServerMessage(QueryServerMessage q, string r)
             : base(ServerMessageType.Query, q.Session, q.MsgID)
         {
             IsYesNo = q.IsYesNo;
             Response = r;
+        }
+
+        public override string ToString()
+        {
+            return base.ToString() + "; Response: " + Response + "; YesNo: " + IsYesNo;
         }
     }
 }

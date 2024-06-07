@@ -128,5 +128,38 @@ namespace LukeBot.Common
 
             return ret;
         }
+
+        /**
+         * Reads an input line masking what has been pressed. Useful for fetching sensitive
+         * information, ex. passwords.
+         *
+         * @p showAsterisks allows to display asterisks instead of typed letters.
+         */
+        public static string ReadLineMasked(bool showAsterisks)
+        {
+            ConsoleKeyInfo key;
+            string line = "";
+
+            do
+            {
+                key = Console.ReadKey(true);
+
+                if (key.Key == ConsoleKey.Backspace && line.Length > 0)
+                {
+                    line = line.Substring(0, line.Length - 1);
+                    if (showAsterisks)
+                        Console.Write("\b \b");
+                }
+                else if (key.Key != ConsoleKey.Enter)
+                {
+                    if (showAsterisks)
+                        Console.Write('*');
+                    line += key.KeyChar;
+                }
+            } while (key.Key != ConsoleKey.Enter);
+
+            Console.Write('\n');
+            return line;
+        }
     }
 }

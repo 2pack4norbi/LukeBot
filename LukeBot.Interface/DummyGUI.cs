@@ -21,7 +21,7 @@ namespace LukeBot.Interface
         {
         }
 
-        public string Query(string message)
+        public string Query(bool maskAnswer, string message)
         {
             return "";
         }

@@ -1,3 +1,7 @@
+using System.Runtime.CompilerServices;
+
+[assembly: InternalsVisibleTo("LukeBot.Tests.Twitch")]
+
 namespace LukeBot.Twitch
 {
     internal class Constants

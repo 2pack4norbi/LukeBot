@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using LukeBot.Common;
 using LukeBot.Interface.Protocols;
 
 
@@ -14,20 +15,18 @@ namespace LukeBotClient
     internal class LukeBotClient
     {
         private ProgramOptions mOpts;
-        private TcpClient mClient;
-        private NetworkStream mStream;
+        private TcpClient mClient = null;
+        private NetworkStream mStream = null;
         private SessionData mSessionData = null;
         private Thread mRecvThread = null;
         private bool mDone;
-        private byte[] mRecvBuffer;
+        private byte[] mRecvBuffer = null;
         private Mutex mPrintMutex = new();
         private const string PROMPT = "> ";
 
         public LukeBotClient(ProgramOptions opts)
         {
             mOpts = opts;
-
-            mClient = new TcpClient();
         }
 
         private void Print(string text)
@@ -77,7 +76,7 @@ namespace LukeBotClient
 
                 return recvString;
             }
-            catch (Exception e)
+            catch (System.Exception e)
             {
                 PrintLine("\rFailed to receive data: " + e.Message);
                 return "";
@@ -85,31 +84,60 @@ namespace LukeBotClient
         }
 
         private async Task<T> ReceiveObject<T>()
+            where T: ServerMessage, new()
         {
-            return JsonSerializer.Deserialize<T>(await Receive());
+            string ret = await Receive();
+
+            if (ret.Length > 0)
+                return JsonSerializer.Deserialize<T>(ret);
+            else
+                return new ServerMessage() as T;
         }
 
         public async Task Login()
         {
-            Console.Write("Username: ");
-            string user = Console.ReadLine();
-
-            Console.Write("Password: ");
-            string pwdPlain = Console.ReadLine();
-
-            SHA512 hasher = SHA512.Create();
-            byte[] pwdHash = hasher.ComputeHash(Encoding.UTF8.GetBytes(pwdPlain));
-
-            LoginServerMessage msg = new(user, pwdHash);
-            await SendObject<LoginServerMessage>(msg);
-
-            LoginResponseServerMessage response = await ReceiveObject<LoginResponseServerMessage>();
-            if (!response.Success)
+            bool loggedIn = false;
+            int tries = 0;
+            while (!loggedIn)
             {
-                throw new SystemException("Failed to login: " + response.Error);
-            }
+                Console.Write("Username: ");
+                string user = Console.ReadLine();
 
-            mSessionData = response.Session;
+                Console.Write("Password: ");
+                string pwdPlain = LukeBot.Common.Utils.ReadLineMasked(true);
+
+                SHA512 hasher = SHA512.Create();
+                byte[] pwdHash = hasher.ComputeHash(Encoding.UTF8.GetBytes(pwdPlain));
+
+                mClient = new TcpClient();
+                await mClient.ConnectAsync(mOpts.Address, mOpts.Port);
+                mClient.SendBufferSize = Constants.CLIENT_BUFFER_SIZE;
+                mClient.ReceiveBufferSize = Constants.CLIENT_BUFFER_SIZE;
+
+                mStream = mClient.GetStream();
+
+                LoginServerMessage msg = new(user, pwdHash);
+                await SendObject<LoginServerMessage>(msg);
+
+                LoginResponseServerMessage response = await ReceiveObject<LoginResponseServerMessage>();
+                if (response.Type == ServerMessageType.None || !response.Success)
+                {
+                    // prevents/discourages bruteforcing
+                    Thread.Sleep(3000);
+
+                    tries++;
+                    if (tries >= 3)
+                        throw new SystemException("Failed to login: " + response.Error);
+
+                    PrintLine("Failed to login: " + response.Error);
+
+                }
+                else
+                {
+                    loggedIn = true;
+                    mSessionData = response.Session;
+                }
+            }
         }
 
         public async Task Run()
@@ -123,15 +151,9 @@ namespace LukeBotClient
                     Utils.CancelConsoleIO();
                 };
 
-                await mClient.ConnectAsync(mOpts.Address, mOpts.Port);
-                mClient.SendBufferSize = Constants.CLIENT_BUFFER_SIZE;
-                mClient.ReceiveBufferSize = Constants.CLIENT_BUFFER_SIZE;
-
-                mStream = mClient.GetStream();
-
+                mRecvBuffer = new byte[Constants.CLIENT_BUFFER_SIZE];
                 await Login();
 
-                mRecvBuffer = new byte[Constants.CLIENT_BUFFER_SIZE];
                 PrintLine("\rConnected to LukeBot. Press Ctrl+C to close");
 
                 // should be a simple "send command and wait for response" here
@@ -161,7 +183,7 @@ namespace LukeBotClient
             }
             catch (System.Exception e)
             {
-                PrintLine("\rException caught: " + e.Message + "\n" + e.StackTrace);
+                PrintLine("\rException caught: " + e.Message);
             }
         }
     }

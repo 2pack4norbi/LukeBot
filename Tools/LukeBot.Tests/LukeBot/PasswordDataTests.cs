@@ -52,7 +52,7 @@ namespace LukeBot.Tests
             PasswordData data = PasswordData.Create(TEST_PASSWORD);
             Assert.IsNotNull(data.Hash);
 
-            Assert.IsTrue(data.Equals(TEST_PASSWORD_SHA512));
+            Assert.IsTrue(TEST_PASSWORD_SHA512.SequenceEqual(data.Hash));
         }
 
         [TestMethod]

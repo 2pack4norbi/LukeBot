@@ -9,8 +9,11 @@ namespace LukeBot.Interface.Protocols
         Command,
         Notify,
         Query,
+        PasswordChange,
+        Logout,
         LoginResponse,
         CommandResponse,
         QueryResponse,
+        PasswordChangeResponse,
     }
 }

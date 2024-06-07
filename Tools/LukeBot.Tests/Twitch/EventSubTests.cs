@@ -220,7 +220,7 @@ namespace LukeBot.Tests.Twitch
             Comms.Initialize();
             Comms.Event.AddUser(EVENT_SUB_TEST_USER);
             Comms.Event.User(EVENT_SUB_TEST_USER).AddEventDispatcher(
-                LukeBot.Twitch.Constants.QueuedDispatcherForUser(EVENT_SUB_TEST_USER), EventDispatcherType.Queued
+                global::LukeBot.Twitch.Constants.QueuedDispatcherForUser(EVENT_SUB_TEST_USER), EventDispatcherType.Queued
             );
         }
 

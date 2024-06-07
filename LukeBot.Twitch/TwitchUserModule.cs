@@ -52,7 +52,7 @@ namespace LukeBot.Twitch
             }
 
             mEventSub = new(mLBUser);
-            mEventSub.Connect(mUserToken, mUserData.id);
+            //mEventSub.Connect(mUserToken, mUserData.id);
         }
 
         internal API.Twitch.GetUserData GetUserData()

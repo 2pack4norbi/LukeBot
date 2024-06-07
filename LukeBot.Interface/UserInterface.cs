@@ -24,6 +24,8 @@ namespace LukeBot.Interface
         private static DummyCLI mDummyCLI = new();
         private static DummyGUI mDummyGUI = new();
 
+        public delegate bool AuthorizeUserDelegate(string user, byte[] passwordHash, out string reason);
+
         /**
          * Returns a User Interface instance.
          *
@@ -110,7 +112,7 @@ namespace LukeBot.Interface
             }
         }
 
-        public static void Initialize(InterfaceType type)
+        public static void Initialize(InterfaceType type, IUserManager userManager)
         {
             mType = type;
 
@@ -120,10 +122,10 @@ namespace LukeBot.Interface
                 mInterface = mDummyCLI;
                 break;
             case InterfaceType.basic:
-                mInterface = new BasicCLI();
+                mInterface = new BasicCLI(userManager);
                 break;
             case InterfaceType.server:
-                mInterface = new ServerCLI("127.0.0.1", 55268);
+                mInterface = new ServerCLI("127.0.0.1", 55268, userManager);
                 break;
             default:
                 throw new UnrecognizedInterfaceTypeException(mType);

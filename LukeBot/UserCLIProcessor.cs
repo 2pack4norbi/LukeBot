@@ -46,6 +46,18 @@ namespace LukeBot
         }
     }
 
+    [Verb("password", HelpText = "Set a password for current user")]
+    public class UserPasswordCommand
+    {
+        [Value(0, MetaName = "username", Required = false, Default = "", HelpText = "Name of user to change password for")]
+        public string Name { get; set; }
+
+        public UserPasswordCommand()
+        {
+            Name = "";
+        }
+    }
+
     internal class UserCLIProcessor: ICLIProcessor
     {
         private const string COMMAND_NAME = "user";
@@ -115,6 +127,34 @@ namespace LukeBot
             }
         }
 
+        void HandlePasswordUserCommand(UserPasswordCommand args, out string msg)
+        {
+            try
+            {
+                UserContext user;
+                if (args.Name == null || args.Name.Length == 0)
+                    user = mLukeBot.GetCurrentUser();
+                else
+                    user = mLukeBot.GetUser(args.Name);
+
+                string newPwd = UserInterface.CommandLine.Query(true, "New password");
+                string newPwdRepeat = UserInterface.CommandLine.Query(true, "Repeat new password");
+
+                if (newPwd != newPwdRepeat)
+                {
+                    msg = "New passwords do not match";
+                    return;
+                }
+
+                user.SetPassword(newPwd);
+                msg = "Password changed";
+            }
+            catch (System.Exception e)
+            {
+                msg = "Failed to change password: " + e.Message;
+            }
+        }
+
         public void AddCLICommands(LukeBot lb)
         {
             mLukeBot = lb;
@@ -122,11 +162,12 @@ namespace LukeBot
             UserInterface.CommandLine.AddCommand(COMMAND_NAME, (string[] args) =>
             {
                 string result = "";
-                Parser.Default.ParseArguments<UserAddCommand, UserListCommand, UserRemoveCommand, UserSelectCommand>(args)
+                Parser.Default.ParseArguments<UserAddCommand, UserListCommand, UserRemoveCommand, UserSelectCommand, UserPasswordCommand>(args)
                     .WithParsed<UserAddCommand>((UserAddCommand args) => HandleAddUserCommand(args, out result))
                     .WithParsed<UserListCommand>((UserListCommand args) => HandleListUsersCommand(args, out result))
                     .WithParsed<UserRemoveCommand>((UserRemoveCommand args) => HandleRemoveUserCommand(args, out result))
                     .WithParsed<UserSelectCommand>((UserSelectCommand args) => HandleSelectUserCommand(args, out result))
+                    .WithParsed<UserPasswordCommand>((UserPasswordCommand args) => HandlePasswordUserCommand(args, out result))
                     .WithNotParsed((IEnumerable<Error> errs) => CLIUtils.HandleCLIError(errs, COMMAND_NAME, out result));
                 return result;
             });

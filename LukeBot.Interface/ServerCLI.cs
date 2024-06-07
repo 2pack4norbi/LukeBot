@@ -17,21 +17,29 @@ namespace LukeBot.Interface
     {
         private class ClientContext
         {
-            private const int COOKIE_SIZE = 128;
+            private const int COOKIE_SIZE = 32;
 
-            public string username = "";
-            public string cookie = "";
-            public TcpClient client = null;
-            public NetworkStream stream = null;
-            public SessionData sessionData = null;
-            public byte[] recvBuffer = new byte[4096];
+            public string mUsername = "";
+            public string mCookie = "";
+            public SessionData mSessionData = null;
 
-            public ClientContext()
+            private TcpClient mClient = null;
+            private NetworkStream mStream = null;
+            private byte[] mRecvBuffer = new byte[4096];
+            private Thread mRecvThread = null;
+            private bool mRecvThreadDone = false;
+
+            public ClientContext(TcpClient client)
             {
+                mClient = client;
+                mStream = mClient.GetStream();
+
                 RandomNumberGenerator rng = RandomNumberGenerator.Create();
                 byte[] cookieBuffer = new byte[COOKIE_SIZE];
                 rng.GetBytes(cookieBuffer);
-                cookie = Convert.ToHexString(cookieBuffer);
+                mCookie = Convert.ToHexString(cookieBuffer);
+
+                mSessionData = new(mCookie);
             }
 
             public string Receive()
@@ -41,8 +49,8 @@ namespace LukeBot.Interface
 
                 do
                 {
-                    read = stream.Read(recvBuffer, 0, 4096);
-                    msg += Encoding.UTF8.GetString(recvBuffer, 0, read);
+                    read = mStream.Read(mRecvBuffer, 0, 4096);
+                    msg += Encoding.UTF8.GetString(mRecvBuffer, 0, read);
                 }
                 while (read == 4096);
 
@@ -56,21 +64,53 @@ namespace LukeBot.Interface
 
             public void Send(string msg)
             {
-                if (stream == null)
+                if (mStream == null)
                     return;
 
                 byte[] sendBuf = Encoding.UTF8.GetBytes(msg);
-                stream.Write(sendBuf, 0, sendBuf.Length);
+                mStream.Write(sendBuf, 0, sendBuf.Length);
             }
 
             public void SendObject<T>(T obj)
             {
                 Send(JsonConvert.SerializeObject(obj));
             }
+
+            private void ReceiveThreadMain()
+            {
+                while (!mRecvThreadDone)
+                {
+                    try
+                    {
+                        ServerMessage msg = ReceiveObject<ServerMessage>();
+                        if (msg.Session == null || msg.Session.Cookie != mSessionData.Cookie ||
+                            msg.Type == ServerMessageType.Login)
+                        {
+                            // cut the connection, something was not correct
+                            mRecvThreadDone = true;
+                            break;
+                        }
+
+                        switch (msg.Type)
+                        {
+                        case ServerMessageType.Logout:
+                            break;
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        mRecvThreadDone = true;
+                    }
+                }
+
+                mStream.Close();
+                mClient.Close();
+            }
         }
 
         private Dictionary<string, Command> mCommands = new();
         private Dictionary<string, ClientContext> mClients = new();
+        private IUserManager mUserManager = null;
         private TcpListener mServer;
         private string mAddress;
         private int mPort;
@@ -81,33 +121,59 @@ namespace LukeBot.Interface
             {
                 // this blocks until a new connection comes in
                 TcpClient client = mServer.AcceptTcpClient();
-                NetworkStream stream = client.GetStream();
 
-                ClientContext context = new();
-                context.client = client;
-                context.stream = stream;
+                ClientContext context = new(client);
 
                 LoginServerMessage loginMsg = context.ReceiveObject<LoginServerMessage>();
-                context.username = loginMsg.User;
+                Logger.Log().Secure("Received login message: {0}", loginMsg.ToString());
+                if (loginMsg.Type != ServerMessageType.Login ||
+                    loginMsg.Session != null ||
+                    Guid.TryParse(loginMsg.MsgID, out Guid result) == false ||
+                    loginMsg.User == null ||
+                    loginMsg.PasswordHashBase64 == null)
+                {
+                    Logger.Log().Error("Malformed login message received");
+                    context.SendObject<LoginResponseServerMessage>(
+                        new LoginResponseServerMessage(loginMsg, "Malformed login message")
+                    );
+                    client.Close();
+                    return;
+                }
 
-                // TODO check password here
+                context.mUsername = loginMsg.User;
 
-                mClients.Add(context.cookie, context);
+                byte[] pwdBuf = Convert.FromBase64String(loginMsg.PasswordHashBase64);
+                if (!mUserManager.AuthenticateUser(loginMsg.User, pwdBuf, out string reason))
+                {
+                    Logger.Log().Error("Login failed for user {0} - {1}", loginMsg.User, reason);
+                    context.SendObject<LoginResponseServerMessage>(
+                        new LoginResponseServerMessage(loginMsg, reason)
+                    );
+                    client.Close();
+                    return;
+                }
 
                 context.SendObject<LoginResponseServerMessage>(
-                    new LoginResponseServerMessage(loginMsg, context.sessionData)
+                    new LoginResponseServerMessage(loginMsg, context.mSessionData)
                 );
+
+                mClients.Add(context.mCookie, context);
             }
             catch (Exception e)
             {
                 Logger.Log().Error("Internal error when trying to accept new server connection: {0}", e.Message);
+                Logger.Log().Error("Stack trace:\n{0}", e.StackTrace);
             }
         }
 
-        public ServerCLI(string address, int port)
+        public ServerCLI(string address, int port, IUserManager userManager)
         {
+            if (userManager == null)
+                throw new ArgumentException("User manager is required for Server CLI to work.");
+
             mAddress = address;
             mPort = port;
+            mUserManager = userManager;
 
             mServer = new TcpListener(IPAddress.Parse(address), port);
         }
@@ -141,13 +207,13 @@ namespace LukeBot.Interface
         public bool Ask(string message)
         {
             // TODO it should, send a query to the client and respond
-            Logger.Log().Error("ServerCLI cannot respond to questions");
+            Logger.Log().Error("ServerCLI cannot respond to questions (yet)");
             return false;
         }
 
-        public string Query(string message)
+        public string Query(bool maskAnswer, string message)
         {
-            Logger.Log().Error("ServerCLI cannot respond to queries");
+            Logger.Log().Error("ServerCLI cannot respond to queries (yet)");
             return "";
         }
 

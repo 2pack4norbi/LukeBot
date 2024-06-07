@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Linq;
 using System.Collections.Generic;
-using System.Threading;
+using System.Security.Cryptography;
+using System.Text;using System.Threading;
 using LukeBot.Logging;
+
 
 
 namespace LukeBot.Interface
@@ -24,6 +26,7 @@ namespace LukeBot.Interface
         private State mState = State.INIT;
         private Mutex mMessageMutex = new Mutex();
         private Dictionary<string, Command> mCommands = new Dictionary<string, Command>();
+        private IUserManager mUserManager;
         private string mPostCommandMessage = "";
         private string mPromptPrefix = ""; // used in basic CLI as marking which user is active
 
@@ -78,12 +81,49 @@ namespace LukeBot.Interface
             }
         }
 
-        public BasicCLI()
+        public BasicCLI(IUserManager userManager)
         {
             Logger.AddPreMessageEvent(PreLogMessageEvent);
             Logger.AddPostMessageEvent(PostLogMessageEvent);
 
+            mUserManager = userManager;
+
+            // To confidence-test CLI
             AddCommand("echo", new EchoCommand());
+
+            // To change password for current user
+            AddCommand("password", (string[] args) =>
+            {
+                try
+                {
+                    string currentUserName = mUserManager.GetCurrentUserName();
+
+                    string curPwd = Query(true, "Current password");
+                    string newPwd = Query(true, "New password");
+                    string newPwdRepeat = Query(true, "Repeat new password");
+
+                    if (newPwd != newPwdRepeat)
+                    {
+                        return "New passwords do not match";
+                    }
+
+                    SHA512 hasher = SHA512.Create();
+                    byte[] curPwdPlaintext = Encoding.UTF8.GetBytes(curPwd);
+                    byte[] newPwdPlaintext = Encoding.UTF8.GetBytes(newPwd);
+
+                    byte[] curPwdHash = hasher.ComputeHash(curPwdPlaintext);
+                    byte[] newPwdHash = hasher.ComputeHash(newPwdPlaintext);
+
+                    if (!mUserManager.ChangeUserPassword(currentUserName, curPwdHash, newPwdHash, out string reason))
+                        return reason;
+                    else
+                        return "Password changed successfully.";
+                }
+                catch (Exception e)
+                {
+                    return "Failed to change password: " + e.Message;
+                }
+            });
         }
 
         ~BasicCLI()
@@ -116,7 +156,7 @@ namespace LukeBot.Interface
             // of some patches (ex. control the Console Buffer directly to create a pseudo-UI)
             // so it's better to use this now than later replace all Console.WriteLine()-s in
             // rest of the project
-            Console.WriteLine(message);
+            Console.Write(message);
         }
 
         /**
@@ -147,7 +187,7 @@ namespace LukeBot.Interface
         /**
          * Query user for a specific answer. Returns 1:1 what user typed in.
          */
-        public string Query(string message)
+        public string Query(bool maskAnswer, string message)
         {
             if (mState != State.COMMAND)
             {
@@ -156,7 +196,10 @@ namespace LukeBot.Interface
             }
 
             Console.Write(message + ": ");
-            return Console.ReadLine();
+            if (maskAnswer)
+                return Common.Utils.ReadLineMasked(true);
+            else
+                return Console.ReadLine();
         }
 
         public void SetPromptPrefix(string username)

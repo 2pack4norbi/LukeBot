@@ -30,10 +30,10 @@ namespace LukeBot.Spotify
                 return true; // quietly exit - login is already there, prerequisites are met
 
             // User login does not exist - query for it
-            login = UserInterface.Instance.Query("Spotify login for user " + lbUser);
+            login = UserInterface.Instance.Query(false, "Spotify login for user " + lbUser);
             if (login.Length == 0)
             {
-                UserInterface.Instance.Message("No login provided");
+                UserInterface.Instance.Message("No login provided\n");
                 return false;
             }
 
