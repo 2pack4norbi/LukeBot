@@ -52,6 +52,7 @@ namespace LukeBot.Twitch
             }
 
             mEventSub = new(mLBUser);
+            // TODO temporarily turned off to speed up ServerCLI dev
             //mEventSub.Connect(mUserToken, mUserData.id);
         }
 

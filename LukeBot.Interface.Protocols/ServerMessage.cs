@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Security.Cryptography;
+using System.Text;
 
 
 namespace LukeBot.Interface.Protocols
@@ -25,7 +27,7 @@ namespace LukeBot.Interface.Protocols
 
     public class ServerMessage
     {
-        public ServerMessageType Type { get; private set; }
+        public ServerMessageType Type { get; set; }
         public SessionData Session { get; set; }
         public string MsgID { get; set; }
 
@@ -84,6 +86,28 @@ namespace LukeBot.Interface.Protocols
         public override string ToString()
         {
             return base.ToString() + "; User: " + User + "; PwdHashB64: " + PasswordHashBase64;
+        }
+    }
+
+    // Ping message - sent exclusively from client to server. Sent when
+    // no other message is sent for about 2 minutes to uphold the connection.
+    public class PingServerMessage: ServerMessage
+    {
+        public string Test { get; set; }
+
+        public PingServerMessage()
+            : base(ServerMessageType.Ping, null)
+        {
+            Test = "";
+        }
+
+        public PingServerMessage(SessionData session)
+            : base(ServerMessageType.Ping, session)
+        {
+            RandomNumberGenerator rng = RandomNumberGenerator.Create();
+            byte[] randomStringBytes = new byte[8];
+            rng.GetBytes(randomStringBytes);
+            Test = Convert.ToHexString(randomStringBytes);
         }
     }
 
@@ -161,6 +185,27 @@ namespace LukeBot.Interface.Protocols
         public override string ToString()
         {
             return base.ToString() + "; Query: " + Query + "; YesNo: " + IsYesNo;
+        }
+    }
+
+    public class PingResponseServerMessage: ServerMessage
+    {
+        public string Test { get; set; }
+
+        public PingResponseServerMessage()
+            : base(ServerMessageType.PingResponse, null, "")
+        {
+        }
+
+        public PingResponseServerMessage(PingServerMessage pingMessage)
+            : base(ServerMessageType.PingResponse, pingMessage.Session)
+        {
+            Test = pingMessage.Test;
+        }
+
+        public override string ToString()
+        {
+            return base.ToString() + "; Test: " + Test;
         }
     }
 
@@ -303,6 +348,31 @@ namespace LukeBot.Interface.Protocols
         public override string ToString()
         {
             return base.ToString() + "; Response: " + Response + "; YesNo: " + IsYesNo;
+        }
+    }
+
+    public class PasswordChangeResponseServerMessage: ServerMessage
+    {
+        public bool Success { get; set; }
+        public string Reason { get; set; }
+
+        public PasswordChangeResponseServerMessage()
+            : base(ServerMessageType.PasswordChange, null, "")
+        {
+            Success = false;
+            Reason = "";
+        }
+
+        public PasswordChangeResponseServerMessage(SessionData session, bool success, string reason)
+            : base(ServerMessageType.PasswordChange, session)
+        {
+            Success = success;
+            Reason = reason;
+        }
+
+        public override string ToString()
+        {
+            return base.ToString() + "; Success: " + Success + "; Reason: " + Reason;
         }
     }
 }

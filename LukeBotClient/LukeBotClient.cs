@@ -3,11 +3,11 @@ using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using LukeBot.Common;
 using LukeBot.Interface.Protocols;
+using Newtonsoft.Json;
 
 
 namespace LukeBotClient
@@ -18,9 +18,10 @@ namespace LukeBotClient
         private TcpClient mClient = null;
         private NetworkStream mStream = null;
         private SessionData mSessionData = null;
-        private Thread mRecvThread = null;
         private bool mDone;
         private byte[] mRecvBuffer = null;
+        private Thread mRecvThread = null;
+        private bool mRecvThreadDone = false;
         private Mutex mPrintMutex = new();
         private const string PROMPT = "> ";
 
@@ -53,34 +54,27 @@ namespace LukeBotClient
 
             byte[] sendBuffer = Encoding.UTF8.GetBytes(cmd);
             await mStream.WriteAsync(sendBuffer, 0, sendBuffer.Length);
+            await mStream.FlushAsync();
         }
 
         private async Task SendObject<T>(T obj)
         {
-            await Send(JsonSerializer.Serialize<T>(obj));
+            await Send(JsonConvert.SerializeObject(obj));
         }
 
         private async Task<string> Receive()
         {
-            try
-            {
-                int read = 0;
-                string recvString = "";
+            int read = 0;
+            string recvString = "";
 
-                do
-                {
-                    read = await mStream.ReadAsync(mRecvBuffer, 0, 4096);
-                    recvString += Encoding.UTF8.GetString(mRecvBuffer, 0, read);
-                }
-                while (read == 4096);
-
-                return recvString;
-            }
-            catch (System.Exception e)
+            do
             {
-                PrintLine("\rFailed to receive data: " + e.Message);
-                return "";
+                read = await mStream.ReadAsync(mRecvBuffer, 0, 4096);
+                recvString += Encoding.UTF8.GetString(mRecvBuffer, 0, read);
             }
+            while (read == 4096);
+
+            return recvString;
         }
 
         private async Task<T> ReceiveObject<T>()
@@ -89,9 +83,33 @@ namespace LukeBotClient
             string ret = await Receive();
 
             if (ret.Length > 0)
-                return JsonSerializer.Deserialize<T>(ret);
+                return JsonConvert.DeserializeObject<T>(ret, new ServerMessageDeserializer());
             else
                 return new ServerMessage() as T;
+        }
+
+        public async void ReceiveThreadMain()
+        {
+            while (!mRecvThreadDone)
+            {
+                ServerMessage msg = await ReceiveObject<ServerMessage>();
+
+                if (msg == null)
+                {
+                    PrintLine("\rReceive thread exiting - received NULL message, probably connection is broken.");
+                    mRecvThreadDone = true;
+                    continue;
+                }
+
+                if (msg.Type == ServerMessageType.Ping)
+                {
+                    PrintLine("\rReceived Ping message");
+                    Console.Write(PROMPT);
+                    PingServerMessage m = msg as PingServerMessage;
+                    PingResponseServerMessage response = new(m);
+                    await SendObject(response);
+                }
+            }
         }
 
         public async Task Login()
@@ -154,6 +172,10 @@ namespace LukeBotClient
                 mRecvBuffer = new byte[Constants.CLIENT_BUFFER_SIZE];
                 await Login();
 
+                mRecvThread = new Thread(ReceiveThreadMain);
+                mRecvThread.Name = "Receive Thread";
+                mRecvThread.Start();
+
                 PrintLine("\rConnected to LukeBot. Press Ctrl+C to close");
 
                 // should be a simple "send command and wait for response" here
@@ -165,7 +187,16 @@ namespace LukeBotClient
 
                     if (msg == "quit")
                     {
+                        LogoutServerMessage logoutMessage = new(mSessionData);
+                        await SendObject<LogoutServerMessage>(logoutMessage);
                         mDone = true;
+                        continue;
+                    }
+
+                    if (msg == "ping")
+                    {
+                        PingServerMessage pingMessage = new(mSessionData);
+                        await SendObject<PingServerMessage>(pingMessage);
                         continue;
                     }
 
@@ -179,7 +210,10 @@ namespace LukeBotClient
                     }
                 }
 
+                mRecvThreadDone = true;
                 mClient.Close();
+
+                mRecvThread.Join();
             }
             catch (System.Exception e)
             {
