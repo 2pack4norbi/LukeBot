@@ -14,7 +14,7 @@ using System.Timers;
 
 namespace LukeBot.Interface
 {
-    public class ServerCLI: CLI
+    public class ServerCLI: CLIBase
     {
         private class ClientContext
         {
@@ -182,7 +182,7 @@ namespace LukeBot.Interface
 
                 mStream.Close();
                 mClient.Close();
-                mClientDoneDelegate(mCookie);
+                mClientDoneDelegate(mUsername);
             }
 
             public void StartThread()
@@ -221,12 +221,12 @@ namespace LukeBot.Interface
         private string mAddress;
         private int mPort;
 
-        public void OnClientRecvThreadDone(string cookie)
+        public void OnClientRecvThreadDone(string username)
         {
             mInterruptMutex.WaitOne();
 
             mInterruptReason = InterruptReason.ClientToClear;
-            mClientsToClear.Enqueue(cookie);
+            mClientsToClear.Enqueue(username);
             mServer.Stop();
 
             mInterruptMutex.ReleaseMutex();
@@ -274,7 +274,7 @@ namespace LukeBot.Interface
                 new LoginResponseServerMessage(loginMsg, context.mSessionData)
             );
 
-            mClients.Add(context.mCookie, context);
+            mClients.Add(context.mUsername, context);
 
             context.StartThread();
         }
@@ -332,7 +332,7 @@ namespace LukeBot.Interface
             }
         }
 
-        public void AddCommand(string cmd, CLI.CmdDelegate d)
+        public void AddCommand(string cmd, CLIBase.CmdDelegate d)
         {
             AddCommand(cmd, new LambdaCommand(d));
         }

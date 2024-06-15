@@ -88,7 +88,7 @@ namespace LukeBot
         {
             mLukeBot = lb;
 
-            UserInterface.CommandLine.AddCommand(COMMAND_NAME, (string[] args) =>
+            UserInterface.CLI.AddCommand(COMMAND_NAME, (string[] args) =>
             {
                 string result = "";
                 Parser.Default.ParseArguments<ModuleListCommand, ModuleEnableCommand, ModuleDisableCommand>(args)

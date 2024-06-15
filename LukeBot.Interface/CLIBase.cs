@@ -1,7 +1,9 @@
-namespace LukeBot.Interface
+﻿namespace LukeBot.Interface
 {
-    public interface InterfaceBase
+    public interface CLIBase
     {
+        public delegate string CmdDelegate(string[] args);
+
         /**
          * Send a non-interactive message to user's interface
          */
@@ -21,5 +23,8 @@ namespace LukeBot.Interface
 
         void MainLoop();
         void Teardown();
+        void AddCommand(string cmd, Command c);
+        void AddCommand(string cmd, CmdDelegate d);
+        void SetPromptPrefix(string prefix);
     }
 }

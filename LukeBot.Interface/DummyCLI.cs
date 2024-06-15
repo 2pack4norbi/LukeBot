@@ -6,13 +6,13 @@ namespace LukeBot.Interface
      * UserInterface class will return this object when LukeBot initializes with
      * non-CLI UI and tries to access UserInterface.CommandLine property.
      */
-    public class DummyCLI: CLI
+    public class DummyCLI: CLIBase
     {
         public void AddCommand(string cmd, Command c)
         {
         }
 
-        public void AddCommand(string cmd, CLI.CmdDelegate d)
+        public void AddCommand(string cmd, CLIBase.CmdDelegate d)
         {
         }
 

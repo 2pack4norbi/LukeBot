@@ -241,7 +241,7 @@ namespace LukeBot
         {
             mLukeBot = lb;
 
-            UserInterface.CommandLine.AddCommand(Constants.WIDGET_MODULE_NAME, (string[] args) =>
+            UserInterface.CLI.AddCommand(Constants.WIDGET_MODULE_NAME, (string[] args) =>
             {
                 string result = "";
                 Parser.Default.ParseArguments<WidgetAddCommand, WidgetAddressCommand, WidgetListCommand, WidgetInfoCommand,

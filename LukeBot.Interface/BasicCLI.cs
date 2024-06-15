@@ -9,7 +9,7 @@ using LukeBot.Logging;
 
 namespace LukeBot.Interface
 {
-    public class BasicCLI: CLI
+    public class BasicCLI: CLIBase
     {
         private enum State
         {
@@ -138,7 +138,7 @@ namespace LukeBot.Interface
             }
         }
 
-        public void AddCommand(string cmd, CLI.CmdDelegate d)
+        public void AddCommand(string cmd, CLIBase.CmdDelegate d)
         {
             AddCommand(cmd, new LambdaCommand(d));
         }

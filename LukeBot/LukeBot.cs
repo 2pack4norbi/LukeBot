@@ -212,12 +212,12 @@ namespace LukeBot
             if (lbUsername.Length == 0)
             {
                 mCurrentUser = null;
-                UserInterface.CommandLine.SetPromptPrefix("");
+                UserInterface.CLI.SetPromptPrefix("");
                 return;
             }
 
             mCurrentUser = mUsers[lbUsername];
-            UserInterface.CommandLine.SetPromptPrefix(mCurrentUser.Username);
+            UserInterface.CLI.SetPromptPrefix(mCurrentUser.Username);
         }
 
         public List<string> GetUsernames()
@@ -275,7 +275,7 @@ namespace LukeBot
 
                 Logger.Log().Info("Giving control to UI");
                 AddCLICommands();
-                UserInterface.Instance.MainLoop();
+                UserInterface.CLI.MainLoop();
             }
             catch (Common.Exception e)
             {

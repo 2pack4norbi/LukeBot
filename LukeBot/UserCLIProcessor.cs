@@ -89,7 +89,7 @@ namespace LukeBot
 
         void HandleRemoveUserCommand(UserRemoveCommand args, out string msg)
         {
-            if (!UserInterface.CommandLine.Ask("Are you sure you want to remove user " + args.Name + "? This will remove all associated data!"))
+            if (!UserInterface.CLI.Ask("Are you sure you want to remove user " + args.Name + "? This will remove all associated data!"))
             {
                 msg = "User removal aborted";
                 return;
@@ -137,8 +137,8 @@ namespace LukeBot
                 else
                     user = mLukeBot.GetUser(args.Name);
 
-                string newPwd = UserInterface.CommandLine.Query(true, "New password");
-                string newPwdRepeat = UserInterface.CommandLine.Query(true, "Repeat new password");
+                string newPwd = UserInterface.CLI.Query(true, "New password");
+                string newPwdRepeat = UserInterface.CLI.Query(true, "Repeat new password");
 
                 if (newPwd != newPwdRepeat)
                 {
@@ -159,7 +159,7 @@ namespace LukeBot
         {
             mLukeBot = lb;
 
-            UserInterface.CommandLine.AddCommand(COMMAND_NAME, (string[] args) =>
+            UserInterface.CLI.AddCommand(COMMAND_NAME, (string[] args) =>
             {
                 string result = "";
                 Parser.Default.ParseArguments<UserAddCommand, UserListCommand, UserRemoveCommand, UserSelectCommand, UserPasswordCommand>(args)
