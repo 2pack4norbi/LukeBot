@@ -10,6 +10,7 @@ namespace LukeBot.Common
         public const string PROP_STORE_USER_DOMAIN = "user";
         public const string PROP_STORE_USERS_PROP = "users";
         public const string PROP_STORE_TOKEN_PROP = "token";
+        public const string PROP_STORE_LOGIN_PROP = "login";
         public const string PROP_STORE_RECONNECT_COUNT_PROP = "reconnect_count";
         public static readonly Path PROP_STORE_SERVER_IP_PROP = Path.Form(LUKEBOT_USER_ID, PROP_STORE_SERVER_IP_PROP_NAME);
 

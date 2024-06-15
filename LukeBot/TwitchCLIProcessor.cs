@@ -1,6 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using LukeBot.Common;
+using LukeBot.Config;
 using LukeBot.Globals;
 using LukeBot.Interface;
 using LukeBot.Module;
@@ -38,6 +40,26 @@ namespace LukeBot
     {
         private TwitchCommandCLIProcessor mCommandCLIProcessor;
         private LukeBot mLukeBot;
+
+        private void CheckForLogin(string user)
+        {
+            Path path = Path.Start()
+                .Push(Constants.PROP_STORE_USER_DOMAIN)
+                .Push(user)
+                .Push(Constants.TWITCH_MODULE_NAME)
+                .Push(Constants.PROP_STORE_LOGIN_PROP);
+
+            if (!Conf.TryGet<string>(path, out string login))
+            {
+                login = UserInterface.CLI.Query(false, "Spotify login for user " + user);
+                if (login.Length == 0)
+                {
+                    throw new ArgumentException("No login provided");
+                }
+
+                Conf.Add(path, Property.Create<string>(login));
+            }
+        }
 
         private void HandleCommandSubverb(TwitchCommandSubverb arg, string[] args, out string result)
         {
@@ -84,6 +106,7 @@ namespace LukeBot
 
             try
             {
+                CheckForLogin(mLukeBot.GetCurrentUser().Username);
                 mLukeBot.GetCurrentUser().EnableModule(ModuleType.Twitch);
                 msg = "Enabled module " + ModuleType.Twitch;
             }

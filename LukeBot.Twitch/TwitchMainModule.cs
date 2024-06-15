@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using LukeBot.API;
 using LukeBot.Communication;
 using LukeBot.Config;
-using LukeBot.Interface;
 using LukeBot.Logging;
 using LukeBot.Module;
 using LukeBot.Twitch.Common;
@@ -42,7 +41,7 @@ namespace LukeBot.Twitch
                 .Push(CommonConstants.PROP_STORE_USER_DOMAIN)
                 .Push(lbUser)
                 .Push(CommonConstants.TWITCH_MODULE_NAME)
-                .Push(Constants.PROP_TWITCH_USER_LOGIN)
+                .Push(CommonConstants.PROP_STORE_LOGIN_PROP)
             );
         }
 
@@ -149,21 +148,14 @@ namespace LukeBot.Twitch
                 .Push(CommonConstants.PROP_STORE_USER_DOMAIN)
                 .Push(lbUser)
                 .Push(CommonConstants.TWITCH_MODULE_NAME)
-                .Push(Constants.PROP_TWITCH_USER_LOGIN);
+                .Push(CommonConstants.PROP_STORE_LOGIN_PROP);
 
-            string login;
-            if (Conf.TryGet<string>(userTwitchLoginProp, out login))
-                return true; // quietly exit - login is already there, prerequisites are met
-
-            // User login does not exist - query for it
-            login = UserInterface.CLI.Query(false, "Twitch login for user " + lbUser);
-            if (login.Length == 0)
+            if (!Conf.TryGet<string>(userTwitchLoginProp, out string login))
             {
-                UserInterface.CLI.Message("No login provided\n");
+                Logger.Log().Error("No Twitch login provided");
                 return false;
             }
 
-            Conf.Add(userTwitchLoginProp, Property.Create<string>(login));
             return true;
         }
 
@@ -186,7 +178,7 @@ namespace LukeBot.Twitch
 
             mBotLogin = Conf.Get<string>(Path.Start()
                 .Push(CommonConstants.TWITCH_MODULE_NAME)
-                .Push(Constants.PROP_TWITCH_USER_LOGIN)
+                .Push(CommonConstants.PROP_STORE_LOGIN_PROP)
             );
 
             if (mBotLogin == CommonConstants.DEFAULT_LOGIN_NAME)
@@ -223,7 +215,7 @@ namespace LukeBot.Twitch
                 .Push(CommonConstants.PROP_STORE_USER_DOMAIN)
                 .Push(lbUser)
                 .Push(CommonConstants.TWITCH_MODULE_NAME)
-                .Push(Constants.PROP_TWITCH_USER_LOGIN)
+                .Push(CommonConstants.PROP_STORE_LOGIN_PROP)
             );
 
             if (mUsers.ContainsKey(channel))

@@ -1,4 +1,3 @@
-using LukeBot.Interface;
 using LukeBot.Module;
 using LukeBot.Spotify;
 using LukeBot.Twitch;

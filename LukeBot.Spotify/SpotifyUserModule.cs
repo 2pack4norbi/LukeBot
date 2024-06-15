@@ -66,7 +66,7 @@ namespace LukeBot.Spotify
                     .Push(CommonConstants.PROP_STORE_USER_DOMAIN)
                     .Push(LBUser)
                     .Push(CommonConstants.SPOTIFY_MODULE_NAME)
-                    .Push(Constants.PROP_STORE_SPOTIFY_LOGIN_PROP)
+                    .Push(CommonConstants.PROP_STORE_LOGIN_PROP)
             );
 
             Login();

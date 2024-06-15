@@ -4,7 +4,7 @@ using System.Diagnostics;
 using LukeBot.Communication;
 using LukeBot.Communication.Common.Intercom;
 using LukeBot.Config;
-using LukeBot.Interface;
+using LukeBot.Logging;
 using LukeBot.Module;
 using LukeBot.Spotify.Common;
 using CommonConstants = LukeBot.Common.Constants;
@@ -23,21 +23,14 @@ namespace LukeBot.Spotify
                 .Push(CommonConstants.PROP_STORE_USER_DOMAIN)
                 .Push(lbUser)
                 .Push(CommonConstants.SPOTIFY_MODULE_NAME)
-                .Push(Constants.PROP_STORE_SPOTIFY_LOGIN_PROP);
+                .Push(CommonConstants.PROP_STORE_LOGIN_PROP);
 
-            string login;
-            if (Conf.TryGet<string>(userSpotifyLoginProp, out login))
-                return true; // quietly exit - login is already there, prerequisites are met
-
-            // User login does not exist - query for it
-            login = UserInterface.CLI.Query(false, "Spotify login for user " + lbUser);
-            if (login.Length == 0)
+            if (!Conf.TryGet<string>(userSpotifyLoginProp, out string login))
             {
-                UserInterface.CLI.Message("No login provided\n");
-                return false;
+                Logger.Log().Error("No login provided");
+                return false; // login is there, prerequisites are met
             }
 
-            Conf.Add(userSpotifyLoginProp, Property.Create<string>(login));
             return true;
         }
 
