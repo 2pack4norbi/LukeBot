@@ -1,6 +1,6 @@
 using LukeBot.Common;
 
-namespace LukeBot.Interface
+namespace LukeBot
 {
     public class InterfaceNotInitializedException: Exception
     {

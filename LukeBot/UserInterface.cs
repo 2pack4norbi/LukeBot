@@ -1,17 +1,15 @@
-namespace LukeBot.Interface
+namespace LukeBot
 {
     /**
      * Main access point to User Interface implementations in LukeBot.
      *
      * It is assumed that only one type of UI is active at LukeBot's run.
      */
-    public class UserInterface
+    internal class UserInterface
     {
         private static InterfaceType mType = InterfaceType.none;
         private static CLIBase mInterface = null;
         private static readonly object mLock = new();
-
-        private static DummyCLI mDummyCLI = new();
 
         public delegate bool AuthorizeUserDelegate(string user, byte[] passwordHash, out string reason);
 
@@ -51,9 +49,6 @@ namespace LukeBot.Interface
 
             switch (mType)
             {
-            case InterfaceType.none:
-                mInterface = mDummyCLI;
-                break;
             case InterfaceType.basic:
                 mInterface = new BasicCLI(userManager);
                 break;

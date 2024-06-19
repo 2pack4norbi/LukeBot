@@ -1,4 +1,4 @@
-namespace LukeBot.Interface
+namespace LukeBot
 {
     internal class EchoCommand: Command
     {

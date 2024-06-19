@@ -32,7 +32,7 @@
     <ProjectReference Include="..\LukeBot.Config\LukeBot.Config.csproj" />
     <ProjectReference Include="..\LukeBot.Endpoint\LukeBot.Endpoint.csproj" />
     <ProjectReference Include="..\LukeBot.Globals\LukeBot.Globals.csproj" />
-    <ProjectReference Include="..\LukeBot.Interface\LukeBot.Interface.csproj" />
+    <ProjectReference Include="..\LukeBot.Interface.Protocols\LukeBot.Interface.Protocols.csproj" />
     <ProjectReference Include="..\LukeBot.Module\LukeBot.Module.csproj" />
     <ProjectReference Include="..\LukeBot.Spotify\LukeBot.Spotify.csproj" />
     <ProjectReference Include="..\LukeBot.Twitch\LukeBot.Twitch.csproj" />

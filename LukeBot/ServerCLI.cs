@@ -12,9 +12,9 @@ using Newtonsoft.Json;
 using System.Timers;
 
 
-namespace LukeBot.Interface
+namespace LukeBot
 {
-    public class ServerCLI: CLIBase
+    internal class ServerCLI: CLIBase
     {
         private class ClientContext
         {

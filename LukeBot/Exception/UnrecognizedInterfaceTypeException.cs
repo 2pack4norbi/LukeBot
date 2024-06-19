@@ -1,6 +1,6 @@
 using System;
 
-namespace LukeBot.Interface
+namespace LukeBot
 {
     public class UnrecognizedInterfaceTypeException: Exception
     {

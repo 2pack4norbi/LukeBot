@@ -3,13 +3,13 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;using System.Threading;
+using LukeBot.Common;
 using LukeBot.Logging;
 
 
-
-namespace LukeBot.Interface
+namespace LukeBot
 {
-    public class BasicCLI: CLIBase
+    internal class BasicCLI: CLIBase
     {
         private enum State
         {
@@ -119,7 +119,7 @@ namespace LukeBot.Interface
                     else
                         return "Password changed successfully.";
                 }
-                catch (Exception e)
+                catch (System.Exception e)
                 {
                     return "Failed to change password: " + e.Message;
                 }

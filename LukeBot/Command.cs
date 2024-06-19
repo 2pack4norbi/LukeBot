@@ -1,6 +1,6 @@
-namespace LukeBot.Interface
+namespace LukeBot
 {
-    public interface Command
+    internal interface Command
     {
         public string Execute(string[] args);
     }

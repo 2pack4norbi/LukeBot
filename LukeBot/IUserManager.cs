@@ -1,6 +1,6 @@
-namespace LukeBot.Interface
+namespace LukeBot
 {
-    public interface IUserManager
+    internal interface IUserManager
     {
         /**
          * Will be called if there is an attempt to authenticate a user.

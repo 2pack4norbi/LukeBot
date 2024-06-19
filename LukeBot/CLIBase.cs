@@ -1,6 +1,6 @@
-﻿namespace LukeBot.Interface
+﻿namespace LukeBot
 {
-    public interface CLIBase
+    internal interface CLIBase
     {
         public delegate string CmdDelegate(string[] args);
 
