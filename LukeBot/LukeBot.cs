@@ -18,6 +18,7 @@ namespace LukeBot
         private List<ICLIProcessor> mCommandProcessors = new List<ICLIProcessor>{
             new EventCLIProcessor(),
             new ModuleCLIProcessor(),
+            new UserCLIProcessor(),
 
             // module CLI commands
             // TODO this should be added by modules themselves on Main Module initialization
@@ -36,27 +37,27 @@ namespace LukeBot
 
         // IUserManager implementations
 
-        public bool AuthenticateUser(string user, byte[] pwdHash, out string reason)
+        public UserPermissionLevel AuthenticateUser(string user, byte[] pwdHash, out string reason)
         {
             if (!mUsers.TryGetValue(user, out UserContext ctx))
             {
                 reason = "User not found";
-                return false;
+                return UserPermissionLevel.None;
             }
 
             if (!ctx.ValidatePassword(pwdHash))
             {
                 reason = "Invalid password";
-                return false;
+                return UserPermissionLevel.None;
             }
 
             reason = "";
-            return true;
+            return ctx.GetPermissionLevel();
         }
 
         public bool ChangeUserPassword(string user, byte[] currentPwdHash, byte[] newPwdHash, out string reason)
         {
-            if (!AuthenticateUser(user, currentPwdHash, out reason))
+            if (AuthenticateUser(user, currentPwdHash, out reason) == UserPermissionLevel.None)
                 return false;
 
             mUsers[user].SetPassword(newPwdHash);
@@ -68,7 +69,6 @@ namespace LukeBot
         {
             return GetCurrentUser().Username;
         }
-
 
 
         void LoadUsers()
@@ -259,15 +259,6 @@ namespace LukeBot
                 GlobalModules.Run();
 
                 InterfaceType uiType = opts.CLI;
-                if (uiType == InterfaceType.basic)
-                {
-                    Logger.Log().Warning("NOTE: Running in basic CLI mode. User management commands are available.");
-                    // TODO this is kind of a hack. It is mostly because we don't have account types implemented.
-                    // In reality, user commands are highly administrative and, as such, should only be used by
-                    // administrator accounts in the bot (even through ServerCLI).
-                    mCommandProcessors.Add(new UserCLIProcessor());
-                }
-
                 Logger.Log().Info("Initializing UI {0}...", uiType.ToString());
                 UserInterface.Initialize(uiType, this);
 

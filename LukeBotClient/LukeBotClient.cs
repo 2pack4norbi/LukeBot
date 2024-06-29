@@ -14,15 +14,24 @@ namespace LukeBotClient
 {
     internal class LukeBotClient
     {
+        enum State
+        {
+            Init = 0,
+            InCLI,
+            AwaitingResponse,
+            Done,
+        };
+
         private ProgramOptions mOpts;
         private TcpClient mClient = null;
         private NetworkStream mStream = null;
         private SessionData mSessionData = null;
-        private bool mDone;
         private byte[] mRecvBuffer = null;
         private Thread mRecvThread = null;
         private bool mRecvThreadDone = false;
         private Mutex mPrintMutex = new();
+        private State mState = State.Init;
+        private ManualResetEvent mAwaitResponseEvent = new(true);
         private const string PROMPT = "> ";
 
         public LukeBotClient(ProgramOptions opts)
@@ -41,7 +50,7 @@ namespace LukeBotClient
 
         private void PrintLine(string line)
         {
-            Print(line + '\n');
+            Print('\r' + line + '\n' + PROMPT);
         }
 
         private async Task Send(string cmd)
@@ -96,18 +105,52 @@ namespace LukeBotClient
 
                 if (msg == null)
                 {
-                    PrintLine("\rReceive thread exiting - received NULL message, probably connection is broken.");
+                    PrintLine("Receive thread exiting - received NULL message, probably connection is broken.");
                     mRecvThreadDone = true;
                     continue;
                 }
 
-                if (msg.Type == ServerMessageType.Ping)
+                switch (msg.Type)
                 {
-                    PrintLine("\rReceived Ping message");
-                    Console.Write(PROMPT);
+                case ServerMessageType.Ping:
+                {
+                    PrintLine("Received Ping message");
                     PingServerMessage m = msg as PingServerMessage;
                     PingResponseServerMessage response = new(m);
                     await SendObject(response);
+                    break;
+                }
+                case ServerMessageType.Notify:
+                {
+                    NotifyServerMessage m = msg as NotifyServerMessage;
+                    PrintLine(m.Message);
+                    break;
+                }
+                case ServerMessageType.CommandResponse:
+                {
+                    CommandResponseServerMessage m = msg as CommandResponseServerMessage;
+                    switch (m.Status)
+                    {
+                    case ServerCommandStatus.Success:
+                        PrintLine(m.Message);
+                        break;
+                    case ServerCommandStatus.InvalidArgument:
+                        PrintLine("Command failed: Invalid argument");
+                        break;
+                    case ServerCommandStatus.UnknownCommand:
+                        PrintLine("Unknown command");
+                        break;
+                    default:
+                        PrintLine("Unknown command status received");
+                        break;
+                    }
+
+                    mAwaitResponseEvent.Set();
+                    break;
+                }
+                default:
+                    PrintLine("Unrecognized message");
+                    break;
                 }
             }
         }
@@ -164,9 +207,10 @@ namespace LukeBotClient
             {
                 Console.CancelKeyPress += delegate
                 {
-                    PrintLine("\rCtrl+C handled: Requested shutdown");
-                    mDone = true;
+                    PrintLine("Ctrl+C handled: Requested shutdown");
+                    mState = State.Done;
                     Utils.CancelConsoleIO();
+                    mAwaitResponseEvent.Set();
                 };
 
                 mRecvBuffer = new byte[Constants.CLIENT_BUFFER_SIZE];
@@ -176,37 +220,40 @@ namespace LukeBotClient
                 mRecvThread.Name = "Receive Thread";
                 mRecvThread.Start();
 
-                PrintLine("\rConnected to LukeBot. Press Ctrl+C to close");
+                PrintLine("Connected to LukeBot. Press Ctrl+C to close");
 
                 // should be a simple "send command and wait for response" here
-                mDone = false;
-                while (!mDone)
+                mState = State.InCLI;
+                while (mState != State.Done)
                 {
-                    Print(PROMPT);
-                    string msg = Console.ReadLine();
+                    string msg = "";
 
-                    if (msg == "quit")
+                    switch (mState)
                     {
-                        LogoutServerMessage logoutMessage = new(mSessionData);
-                        await SendObject<LogoutServerMessage>(logoutMessage);
-                        mDone = true;
-                        continue;
-                    }
+                    case State.InCLI:
+                        msg = Console.ReadLine();
 
-                    if (msg == "ping")
-                    {
-                        PingServerMessage pingMessage = new(mSessionData);
-                        await SendObject<PingServerMessage>(pingMessage);
-                        continue;
-                    }
+                        if (msg == "quit")
+                        {
+                            LogoutServerMessage logoutMessage = new(mSessionData);
+                            await SendObject<LogoutServerMessage>(logoutMessage);
+                            mState = State.Done;
+                            break;
+                        }
 
-                    CommandServerMessage cmdMessage = new(mSessionData, msg);
-                    await SendObject<CommandServerMessage>(cmdMessage);
-
-                    CommandResponseServerMessage resp = await ReceiveObject<CommandResponseServerMessage>();
-                    if (resp.Status != ServerCommandStatus.Success)
-                    {
-                        PrintLine("Command failed on server side: " + resp.Status.ToString());
+                        CommandServerMessage cmdMessage = new(mSessionData, msg);
+                        await SendObject<CommandServerMessage>(cmdMessage);
+                        mState = State.AwaitingResponse;
+                        break;
+                    case State.AwaitingResponse:
+                        mAwaitResponseEvent.WaitOne();
+                        mAwaitResponseEvent.Reset();
+                        mState = State.InCLI;
+                        break;
+                    default:
+                        PrintLine("Invalid internal state: " + mState + " -- this should not happen");
+                        mState = State.Done;
+                        break;
                     }
                 }
 
@@ -217,7 +264,7 @@ namespace LukeBotClient
             }
             catch (System.Exception e)
             {
-                PrintLine("\rException caught: " + e.Message);
+                PrintLine("Exception caught: " + e.Message);
             }
         }
     }

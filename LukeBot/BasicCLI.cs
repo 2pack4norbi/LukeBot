@@ -9,7 +9,7 @@ using LukeBot.Logging;
 
 namespace LukeBot
 {
-    internal class BasicCLI: CLIBase
+    internal class BasicCLI: CLIBase, CLIMessageProxy
     {
         private enum State
         {
@@ -68,7 +68,7 @@ namespace LukeBot
                 return;
             }
 
-            mPostCommandMessage = c.Execute(cmdTokens.Skip(1).ToArray());
+            mPostCommandMessage = c.Execute(this, cmdTokens.Skip(1).ToArray());
         }
 
         // Ensure this call is done only inside mMessageMutex
@@ -89,18 +89,19 @@ namespace LukeBot
             mUserManager = userManager;
 
             // To confidence-test CLI
-            AddCommand("echo", new EchoCommand());
+            AddCommand("echo", new EchoCommand(UserPermissionLevel.None));
 
             // To change password for current user
-            AddCommand("password", (string[] args) =>
+            // ServerCLI does that with a separate message sent from client
+            AddCommand("password", UserPermissionLevel.User, (CLIMessageProxy proxy, string[] args) =>
             {
                 try
                 {
                     string currentUserName = mUserManager.GetCurrentUserName();
 
-                    string curPwd = Query(true, "Current password");
-                    string newPwd = Query(true, "New password");
-                    string newPwdRepeat = Query(true, "Repeat new password");
+                    string curPwd = proxy.Query(true, "Current password");
+                    string newPwd = proxy.Query(true, "New password");
+                    string newPwdRepeat = proxy.Query(true, "Repeat new password");
 
                     if (newPwd != newPwdRepeat)
                     {
@@ -138,9 +139,9 @@ namespace LukeBot
             }
         }
 
-        public void AddCommand(string cmd, CLIBase.CmdDelegate d)
+        public void AddCommand(string cmd, UserPermissionLevel permissionLevel, CLIBase.CmdDelegate d)
         {
-            AddCommand(cmd, new LambdaCommand(d));
+            AddCommand(cmd, new LambdaCommand(permissionLevel, d));
         }
 
         // To be used inside CLI commands to query user for a yes/no choice
@@ -152,11 +153,7 @@ namespace LukeBot
                 return;
             }
 
-            // TODO this looks over-engineered, but I want to improve CLI vastly over the course
-            // of some patches (ex. control the Console Buffer directly to create a pseudo-UI)
-            // so it's better to use this now than later replace all Console.WriteLine()-s in
-            // rest of the project
-            Console.Write(message);
+            Console.WriteLine(message);
         }
 
         /**

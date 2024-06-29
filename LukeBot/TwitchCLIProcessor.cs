@@ -40,6 +40,7 @@ namespace LukeBot
     {
         private TwitchCommandCLIProcessor mCommandCLIProcessor;
         private LukeBot mLukeBot;
+        private CLIMessageProxy mCLI;
 
         private void CheckForLogin(string user)
         {
@@ -51,7 +52,7 @@ namespace LukeBot
 
             if (!Conf.TryGet<string>(path, out string login))
             {
-                login = UserInterface.CLI.Query(false, "Spotify login for user " + user);
+                login = mCLI.Query(false, "Spotify login for user " + user);
                 if (login.Length == 0)
                 {
                     throw new ArgumentException("No login provided");
@@ -136,8 +137,10 @@ namespace LukeBot
             mLukeBot = lb;
             mCommandCLIProcessor = new TwitchCommandCLIProcessor(mLukeBot);
 
-            UserInterface.CLI.AddCommand(Constants.TWITCH_MODULE_NAME, (string[] args) =>
+            UserInterface.CLI.AddCommand(Constants.TWITCH_MODULE_NAME, UserPermissionLevel.User, (CLIMessageProxy cliProxy, string[] args) =>
             {
+                mCLI = cliProxy;
+
                 string result = "";
                 string[] cmdArgs = args.Take(2).ToArray(); // filters out any additional options/commands that might confuse CommandLine
                 Parser.Default.ParseArguments<TwitchCommandSubverb, TwitchEmoteRefreshSubverb, TwitchLoginSubverb, TwitchEnableSubverb, TwitchDisableSubverb>(cmdArgs)

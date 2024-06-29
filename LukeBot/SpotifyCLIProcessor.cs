@@ -35,6 +35,7 @@ namespace LukeBot
     internal class SpotifyCLIProcessor: ICLIProcessor
     {
         private LukeBot mLukeBot;
+        private CLIMessageProxy mCLI;
 
         private void CheckForLogin(string user)
         {
@@ -46,7 +47,7 @@ namespace LukeBot
 
             if (!Conf.TryGet<string>(path, out string login))
             {
-                login = UserInterface.CLI.Query(false, "Spotify login for user " + user);
+                login = mCLI.Query(false, "Spotify login for user " + user);
                 if (login.Length == 0)
                 {
                     throw new ArgumentException("No login provided");
@@ -106,8 +107,10 @@ namespace LukeBot
         {
             mLukeBot = lb;
 
-            UserInterface.CLI.AddCommand(Constants.SPOTIFY_MODULE_NAME, (string[] args) =>
+            UserInterface.CLI.AddCommand(Constants.SPOTIFY_MODULE_NAME, UserPermissionLevel.User, (CLIMessageProxy cliProxy, string[] args) =>
             {
+                mCLI = cliProxy;
+
                 string result = "";
                 Parser.Default.ParseArguments<SpotifyLoginSubverb, SpotifyEnableSubverb, SpotifyDisableSubverb>(args)
                     .WithParsed<SpotifyLoginSubverb>((SpotifyLoginSubverb arg) => HandleLoginSubverb(arg, out result))

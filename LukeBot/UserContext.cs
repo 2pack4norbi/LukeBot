@@ -10,7 +10,14 @@ using LukeBot.Module;
 
 namespace LukeBot
 {
-    class UserContext
+    internal enum UserPermissionLevel
+    {
+        None = 0,
+        User,
+        Admin,
+    };
+
+    internal class UserContext
     {
         public string Username { get; private set; }
 
@@ -18,8 +25,10 @@ namespace LukeBot
         private const string PROP_STORE_WIDGETS_DOMAIN = "widgets";
         private const string PROP_STORE_ACCOUNT_DOMAIN = "account";
         private const string PROP_STORE_PASSWORD = "password";
+        private const string PROP_STORE_PERMISSION_LEVEL = "permission";
 
         private Dictionary<ModuleType, IUserModule> mModules = new();
+        private UserPermissionLevel mPermissionLevel;
         private PasswordData mPasswordData = null;
 
         // user data management
@@ -35,6 +44,17 @@ namespace LukeBot
                 Conf.Add(passwordDataPath, Property.Create<PasswordData>(mPasswordData));
             else
                 Conf.Modify<PasswordData>(passwordDataPath, mPasswordData);
+
+            Path permissionLevelPath = Path.Start()
+                .Push(Constants.PROP_STORE_USER_DOMAIN)
+                .Push(Username)
+                .Push(PROP_STORE_ACCOUNT_DOMAIN)
+                .Push(PROP_STORE_PERMISSION_LEVEL);
+
+            if (!Conf.Exists<UserPermissionLevel>(permissionLevelPath))
+                Conf.Add(permissionLevelPath, Property.Create<UserPermissionLevel>(mPermissionLevel));
+            else
+                Conf.Modify<UserPermissionLevel>(permissionLevelPath, mPermissionLevel);
 
             Conf.Save();
         }
@@ -52,6 +72,23 @@ namespace LukeBot
                 // no password, issue a warning
                 Logger.Log().Warning("User " + Username + " has no password set! Remember to set your password.");
                 mPasswordData = null;
+            }
+
+            Path permissionLevelPath = Path.Start()
+                .Push(Constants.PROP_STORE_USER_DOMAIN)
+                .Push(Username)
+                .Push(PROP_STORE_ACCOUNT_DOMAIN)
+                .Push(PROP_STORE_PERMISSION_LEVEL);
+
+            if (!Conf.TryGet<UserPermissionLevel>(permissionLevelPath, out mPermissionLevel))
+            {
+                // no password, issue a warning
+                Logger.Log().Warning("User " + Username + " has no permission level set");
+                mPermissionLevel = UserPermissionLevel.None;
+            }
+            else
+            {
+                Logger.Log().Secure("User " + Username + " permission level: {0}", mPermissionLevel);
             }
         }
 
@@ -173,6 +210,11 @@ namespace LukeBot
             return enabledModules;
         }
 
+        public UserPermissionLevel GetPermissionLevel()
+        {
+            return mPermissionLevel;
+        }
+
         // Set a new password based on a received hash. This path should
         // be taken only by remote connections (aka. via ServerCLI)
         public void SetPassword(byte[] passwordHash)
@@ -186,6 +228,12 @@ namespace LukeBot
         public void SetPassword(string newPassword)
         {
             mPasswordData = PasswordData.Create(newPassword);
+            UpdateUserDataInConfig();
+        }
+
+        public void SetPermissionLevel(UserPermissionLevel permLevel)
+        {
+            mPermissionLevel = permLevel;
             UpdateUserDataInConfig();
         }
 

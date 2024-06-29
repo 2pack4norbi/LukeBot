@@ -304,22 +304,30 @@ namespace LukeBot.Interface.Protocols
     public class CommandResponseServerMessage: ServerMessage
     {
         public ServerCommandStatus Status { get; set; }
+        public string Message { get; set; }
 
         public CommandResponseServerMessage()
             : base(ServerMessageType.CommandResponse, null, "")
         {
             Status = ServerCommandStatus.UnknownCommand;
+            Message = "";
         }
 
         public CommandResponseServerMessage(CommandServerMessage cmd, ServerCommandStatus status)
-            : base(ServerMessageType.Query, cmd.Session, cmd.MsgID)
+            : this(cmd, status, "")
+        {
+        }
+
+        public CommandResponseServerMessage(CommandServerMessage cmd, ServerCommandStatus status, string message)
+            : base(ServerMessageType.CommandResponse, cmd.Session, cmd.MsgID)
         {
             Status = status;
+            Message = message;
         }
 
         public override string ToString()
         {
-            return base.ToString() + "; Status: " + Status.ToString();
+            return base.ToString() + "; Status: " + Status.ToString() + "; Message: " + Message;
         }
     }
 
@@ -332,14 +340,14 @@ namespace LukeBot.Interface.Protocols
         public bool IsYesNo { get; set; }
 
         public QueryResponseServerMessage()
-            : base(ServerMessageType.CommandResponse, null, "")
+            : base(ServerMessageType.QueryResponse, null, "")
         {
             Response = "";
             IsYesNo = false;
         }
 
         public QueryResponseServerMessage(QueryServerMessage q, string r)
-            : base(ServerMessageType.Query, q.Session, q.MsgID)
+            : base(ServerMessageType.QueryResponse, q.Session, q.MsgID)
         {
             IsYesNo = q.IsYesNo;
             Response = r;
@@ -357,14 +365,14 @@ namespace LukeBot.Interface.Protocols
         public string Reason { get; set; }
 
         public PasswordChangeResponseServerMessage()
-            : base(ServerMessageType.PasswordChange, null, "")
+            : base(ServerMessageType.PasswordChangeResponse, null, "")
         {
             Success = false;
             Reason = "";
         }
 
         public PasswordChangeResponseServerMessage(SessionData session, bool success, string reason)
-            : base(ServerMessageType.PasswordChange, session)
+            : base(ServerMessageType.PasswordChangeResponse, session)
         {
             Success = success;
             Reason = reason;

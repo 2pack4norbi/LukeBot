@@ -16,7 +16,7 @@ namespace LukeBot
 {
     internal class ServerCLI: CLIBase
     {
-        private class ClientContext
+        private class ClientContext: CLIMessageProxy
         {
             public delegate void OnClientDoneDelegate(string cookie);
 
@@ -26,6 +26,7 @@ namespace LukeBot
             public string mUsername = "";
             public string mCookie = ""; // full ID of this connection context
             public SessionData mSessionData = null;
+            private UserPermissionLevel mPermissionLevel = UserPermissionLevel.None;
             private OnClientDoneDelegate mClientDoneDelegate = null;
 
             private string mCookieShorthand = "";
@@ -37,6 +38,8 @@ namespace LukeBot
             private bool mRecvThreadDone = false;
             private System.Timers.Timer mPingTimer = null;
             private string mCurrentPingChallenge = "";
+
+            private Dictionary<string, Command> mCommands = new();
 
             private void OnTimer(object source, ElapsedEventArgs args)
             {
@@ -64,6 +67,7 @@ namespace LukeBot
                 mClient = client;
                 mStream = mClient.GetStream();
                 mStream.ReadTimeout = 125 * 1000; // 2 minutes
+                mPermissionLevel = UserPermissionLevel.None;
                 mClientDoneDelegate = clientDoneDelegate;
 
                 RandomNumberGenerator rng = RandomNumberGenerator.Create();
@@ -110,6 +114,7 @@ namespace LukeBot
 
                 byte[] sendBuf = Encoding.UTF8.GetBytes(msg);
                 mStream.Write(sendBuf, 0, sendBuf.Length);
+                mStream.Flush();
             }
 
             public void SendObject<T>(T obj)
@@ -162,6 +167,28 @@ namespace LukeBot
                             mCurrentPingChallenge = "";
                             mPingTimer.Start();
                             break;
+                        case ServerMessageType.Command:
+                        {
+                            CommandServerMessage cmd = msg as CommandServerMessage;
+                            string[] cmdTokens = cmd.Command.Split(' ');
+                            if (mCommands.TryGetValue(cmdTokens[0], out Command c))
+                            {
+                                // TODO Command.Execute() should not return a string, but rather
+                                // communicate its outcome and such via CLIMessageProxy
+                                // Instead we could return something like a boolean value to
+                                // check if we succeeded or not
+                                string result = c.Execute(this, cmdTokens.Skip(1).ToArray());
+                                CommandResponseServerMessage resp = new(cmd, ServerCommandStatus.Success, result);
+                                SendObject<CommandResponseServerMessage>(resp);
+                            }
+                            else
+                            {
+                                CommandResponseServerMessage resp = new(cmd, ServerCommandStatus.UnknownCommand, "");
+                                SendObject<CommandResponseServerMessage>(resp);
+                            }
+                            LogClientContext(LogLevel.Debug, "Processing Command message done");
+                            break;
+                        }
                         default:
                             LogClientContext(LogLevel.Debug, "Received message of type {0}", msg.Type.ToString());
                             break;
@@ -190,6 +217,24 @@ namespace LukeBot
                 mRecvThread.Start();
             }
 
+            public void ElevatePermissionLevel(UserPermissionLevel level)
+            {
+                mPermissionLevel = level;
+            }
+
+            public void SelectCommands(Dictionary<string, Command> commands)
+            {
+                // we iterate over all Commands that are available and pick the ones that we
+                // can add, based on users' permission level
+                foreach (KeyValuePair<string, Command> it in commands)
+                {
+                    if (it.Value.PermissionLevel <= mPermissionLevel)
+                    {
+                        mCommands.Add(it.Key, it.Value);
+                    }
+                }
+            }
+
             public void ForceDisconnect()
             {
                 mRecvThreadDone = true;
@@ -201,6 +246,29 @@ namespace LukeBot
             {
                 if (mRecvThread != null)
                     mRecvThread.Join();
+            }
+
+
+            // CLIMessageProxy implementation
+
+            public void Message(string msg)
+            {
+                NotifyServerMessage m = new(mSessionData, msg);
+                SendObject<NotifyServerMessage>(m);
+            }
+
+            public bool Ask(string msg)
+            {
+                NotifyServerMessage m = new(mSessionData, "Incoming question (not implemented yet): " + msg);
+                SendObject<NotifyServerMessage>(m);
+                return false;
+            }
+
+            public string Query(bool maskAnswer, string msg)
+            {
+                NotifyServerMessage m = new(mSessionData, "Incoming query (not implemented yet): " + msg);
+                SendObject<NotifyServerMessage>(m);
+                return "";
             }
         }
 
@@ -237,6 +305,11 @@ namespace LukeBot
             // this blocks until a new connection comes in
             TcpClient client = mServer.AcceptTcpClient();
 
+            // At first ClientContext is created with no permission level, which grants
+            // no access to any LukeBot commands.
+            // Technically it doesn't matter (no commands on ClientContext's side yet, plus
+            // Receive Thread is not yet running), but it puts an extra layer of protection
+            // in case we need to change the above.
             ClientContext context = new(client, OnClientRecvThreadDone);
 
             LoginServerMessage loginMsg = context.ReceiveObject<LoginServerMessage>();
@@ -252,10 +325,21 @@ namespace LukeBot
                 return;
             }
 
+            if (mClients.ContainsKey(loginMsg.User))
+            {
+                Logger.Log().Error("Attempted login at already logged in user");
+                context.SendObject<LoginResponseServerMessage>(
+                    new LoginResponseServerMessage(loginMsg, "Already logged in")
+                );
+                client.Close();
+                return;
+            }
+
             context.mUsername = loginMsg.User;
 
             byte[] pwdBuf = Convert.FromBase64String(loginMsg.PasswordHashBase64);
-            if (!mUserManager.AuthenticateUser(loginMsg.User, pwdBuf, out string reason))
+            UserPermissionLevel permLevel = mUserManager.AuthenticateUser(loginMsg.User, pwdBuf, out string reason);
+            if (permLevel == UserPermissionLevel.None)
             {
                 Logger.Log().Error("Login failed for user {0} - {1}", loginMsg.User, reason);
                 context.SendObject<LoginResponseServerMessage>(
@@ -265,11 +349,11 @@ namespace LukeBot
                 return;
             }
 
-            // TODO:
-            // - check if user is already logged in
-            // - properly manage login threads and such
-            // - make this work fully please it is time finally please
+            // auth succeeded, give proper permission level and select allowed commands from the pool
+            context.ElevatePermissionLevel(permLevel);
+            context.SelectCommands(mCommands);
 
+            // send back confirmation that all is well
             context.SendObject<LoginResponseServerMessage>(
                 new LoginResponseServerMessage(loginMsg, context.mSessionData)
             );
@@ -285,11 +369,11 @@ namespace LukeBot
 
             while (mClientsToClear.Count > 0)
             {
-                string clientCookie = mClientsToClear.Dequeue();
-                Logger.Log().Debug("Clearing {0}", clientCookie.Substring(0, 8));
-                mClients[clientCookie].WaitForShutdown();
-                mClients.Remove(clientCookie);
-                Logger.Log().Debug("{0} removed", clientCookie.Substring(0, 8));
+                string client = mClientsToClear.Dequeue();
+                Logger.Log().Debug("Clearing {0}", client);
+                mClients[client].WaitForShutdown();
+                mClients.Remove(client);
+                Logger.Log().Debug("{0} removed", client);
             }
 
             mInterruptReason = InterruptReason.Unknown;
@@ -332,31 +416,9 @@ namespace LukeBot
             }
         }
 
-        public void AddCommand(string cmd, CLIBase.CmdDelegate d)
+        public void AddCommand(string cmd, UserPermissionLevel permissionLevel, CLIBase.CmdDelegate d)
         {
-            AddCommand(cmd, new LambdaCommand(d));
-        }
-
-        public void Message(string message)
-        {
-            // TODO this looks over-engineered, but I want to improve CLI vastly over the course
-            // of some patches (ex. control the Console Buffer directly to create a pseudo-UI)
-            // so it's better to use this now than later replace all Console.WriteLine()-s in
-            // rest of the project
-            Logger.Log().Info(message);
-        }
-
-        public bool Ask(string message)
-        {
-            // TODO it should, send a query to the client and respond
-            Logger.Log().Error("ServerCLI cannot respond to questions (yet)");
-            return false;
-        }
-
-        public string Query(bool maskAnswer, string message)
-        {
-            Logger.Log().Error("ServerCLI cannot respond to queries (yet)");
-            return "";
+            AddCommand(cmd, new LambdaCommand(permissionLevel, d));
         }
 
         public void MainLoop()

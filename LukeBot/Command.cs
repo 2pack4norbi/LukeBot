@@ -1,7 +1,14 @@
 namespace LukeBot
 {
-    internal interface Command
+    internal abstract class Command
     {
-        public string Execute(string[] args);
+        public UserPermissionLevel PermissionLevel { get; private set; }
+
+        public Command(UserPermissionLevel permissionLevel)
+        {
+            PermissionLevel = permissionLevel;
+        }
+
+        public abstract string Execute(CLIMessageProxy cliProxy, string[] args);
     }
 }

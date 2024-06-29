@@ -4,14 +4,15 @@ namespace LukeBot
     {
         private CLIBase.CmdDelegate mDelegate;
 
-        public LambdaCommand(CLIBase.CmdDelegate d)
+        public LambdaCommand(UserPermissionLevel permissionLevel, CLIBase.CmdDelegate d)
+            : base(permissionLevel)
         {
             mDelegate = d;
         }
 
-        public string Execute(string[] args)
+        public override string Execute(CLIMessageProxy cliProxy, string[] args)
         {
-            return mDelegate(args);
+            return mDelegate(cliProxy, args);
         }
     }
 }
