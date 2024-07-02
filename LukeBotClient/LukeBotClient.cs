@@ -32,7 +32,8 @@ namespace LukeBotClient
         private Mutex mPrintMutex = new();
         private State mState = State.Init;
         private ManualResetEvent mAwaitResponseEvent = new(true);
-        private const string PROMPT = "> ";
+        private const string PROMPT_SUFFIX = "> ";
+        private string mCurrentPrompt = "";
 
         public LukeBotClient(ProgramOptions opts)
         {
@@ -50,7 +51,7 @@ namespace LukeBotClient
 
         private void PrintLine(string line)
         {
-            Print('\r' + line + '\n' + PROMPT);
+            Print('\r' + line + '\n' + mCurrentPrompt);
         }
 
         private async Task Send(string cmd)
@@ -126,6 +127,15 @@ namespace LukeBotClient
                     PrintLine(m.Message);
                     break;
                 }
+                case ServerMessageType.CurrentUserChange:
+                {
+                    CurrentUserChangeServerMessage m = msg as CurrentUserChangeServerMessage;
+                    bool needsPrompt = (mCurrentPrompt.Length == 0);
+                    mCurrentPrompt = m.NewUser + PROMPT_SUFFIX;
+                    if (needsPrompt)
+                        PrintLine("Logged in as " + m.NewUser);
+                    break;
+                }
                 case ServerMessageType.CommandResponse:
                 {
                     CommandResponseServerMessage m = msg as CommandResponseServerMessage;
@@ -191,7 +201,6 @@ namespace LukeBotClient
                         throw new SystemException("Failed to login: " + response.Error);
 
                     PrintLine("Failed to login: " + response.Error);
-
                 }
                 else
                 {

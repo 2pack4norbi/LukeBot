@@ -234,6 +234,33 @@ namespace LukeBot.Interface.Protocols
         }
     }
 
+    // Sent from Server to Client when the current user has been changed.
+    // This should be sent only when Client is logged in under an Admin account
+    // and calls a function like "user switch". This message is used mostly to
+    // show the Client which user's context is used at given point in time.
+    // This message expects no response.
+    public class CurrentUserChangeServerMessage: ServerMessage
+    {
+        public string NewUser { get; set; }
+
+        public CurrentUserChangeServerMessage()
+            : base(ServerMessageType.CurrentUserChange, null, "")
+        {
+            NewUser = "";
+        }
+
+        public CurrentUserChangeServerMessage(SessionData session, string user)
+            : base(ServerMessageType.CurrentUserChange, session)
+        {
+            NewUser = user;
+        }
+
+        public override string ToString()
+        {
+            return base.ToString() + "; NewUser: " + NewUser;
+        }
+    }
+
     public class LogoutServerMessage: ServerMessage
     {
         public LogoutServerMessage()

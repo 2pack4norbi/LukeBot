@@ -29,6 +29,7 @@ namespace LukeBot
         private IUserManager mUserManager;
         private string mPostCommandMessage = "";
         private string mPromptPrefix = ""; // used in basic CLI as marking which user is active
+        private string mCurrentUser = "";
 
 
         private void PreLogMessageEvent(object sender, LogMessageArgs args)
@@ -97,7 +98,7 @@ namespace LukeBot
             {
                 try
                 {
-                    string currentUserName = mUserManager.GetCurrentUserName();
+                    string currentUserName = proxy.GetCurrentUser();
 
                     string curPwd = proxy.Query(true, "Current password");
                     string newPwd = proxy.Query(true, "New password");
@@ -199,8 +200,17 @@ namespace LukeBot
                 return Console.ReadLine();
         }
 
-        public void SetPromptPrefix(string username)
+        public string GetCurrentUser()
         {
+            if (mCurrentUser.Length == 0)
+                throw new NoUserSelectedException();
+
+            return mCurrentUser;
+        }
+
+        public void SetCurrentUser(string username)
+        {
+            mCurrentUser = username;
             mPromptPrefix = username;
         }
 

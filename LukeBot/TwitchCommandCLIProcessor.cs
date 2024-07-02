@@ -106,7 +106,7 @@ namespace LukeBot
         }
     }
 
-    public class TwitchCommandCLIProcessor
+    internal class TwitchCommandCLIProcessor
     {
         private LukeBot mLukeBot;
 
@@ -115,11 +115,11 @@ namespace LukeBot
             mLukeBot = lb;
         }
 
-        public void HandleAddcom(TwitchAddCommand cmd, out string msg)
+        public void HandleAddcom(TwitchAddCommand cmd, CLIMessageProxy CLI, out string msg)
         {
             try
             {
-                string lbUser = mLukeBot.GetCurrentUser().Username;
+                string lbUser = CLI.GetCurrentUser();
 
                 Twitch.Command.ICommand twCmd = GlobalModules.Twitch.AllocateCommand(lbUser, cmd.Name, cmd.Type, string.Join(' ', cmd.Value));
                 if (twCmd == null)
@@ -139,11 +139,11 @@ namespace LukeBot
             msg = "Added " + cmd.Type + " twitch command " + cmd.Name;
         }
 
-        public void HandleDelcom(TwitchDeleteCommand cmd, out string msg)
+        public void HandleDelcom(TwitchDeleteCommand cmd, CLIMessageProxy CLI, out string msg)
         {
             try
             {
-                string lbUser = mLukeBot.GetCurrentUser().Username;
+                string lbUser = CLI.GetCurrentUser();
                 GlobalModules.Twitch.DeleteCommandFromChannel(lbUser, cmd.Name);
             }
             catch (System.Exception e)
@@ -155,11 +155,11 @@ namespace LukeBot
             msg = "Twitch command " + cmd.Name + " deleted.";
         }
 
-        public void HandleEditcom(TwitchEditCommand cmd, out string msg)
+        public void HandleEditcom(TwitchEditCommand cmd, CLIMessageProxy CLI, out string msg)
         {
             try
             {
-                string lbUser = mLukeBot.GetCurrentUser().Username;
+                string lbUser = CLI.GetCurrentUser();
                 GlobalModules.Twitch.EditCommandFromChannel(lbUser, cmd.Name, string.Join(' ', cmd.Value));
             }
             catch (System.Exception e)
@@ -171,11 +171,11 @@ namespace LukeBot
             msg = "Edited twitch command " + cmd.Name;
         }
 
-        public void HandleListcom(TwitchListCommand cmd, out string msg)
+        public void HandleListcom(TwitchListCommand cmd, CLIMessageProxy CLI, out string msg)
         {
             try
             {
-                string lbUser = mLukeBot.GetCurrentUser().Username;
+                string lbUser = CLI.GetCurrentUser();
 
                 msg = "Available commands:\n";
 
@@ -192,11 +192,11 @@ namespace LukeBot
             }
         }
 
-        public void HandleModcom(TwitchModifyCommand cmd, out string msg)
+        public void HandleModcom(TwitchModifyCommand cmd, CLIMessageProxy CLI, out string msg)
         {
             try
             {
-                string lbUser = mLukeBot.GetCurrentUser().Username;
+                string lbUser = CLI.GetCurrentUser();
 
                 if (cmd.List)
                 {
@@ -248,16 +248,16 @@ namespace LukeBot
             }
         }
 
-        public string Parse(string[] args)
+        public string Parse(CLIMessageProxy CLI, string[] args)
         {
             string result = "";
             Parser.Default.ParseArguments<TwitchAddCommand, TwitchDeleteCommand, TwitchEditCommand,
                     TwitchListCommand, TwitchModifyCommand>(args)
-                .WithParsed<TwitchAddCommand>((TwitchAddCommand arg) => HandleAddcom(arg, out result))
-                .WithParsed<TwitchDeleteCommand>((TwitchDeleteCommand arg) => HandleDelcom(arg, out result))
-                .WithParsed<TwitchEditCommand>((TwitchEditCommand arg) => HandleEditcom(arg, out result))
-                .WithParsed<TwitchListCommand>((TwitchListCommand arg) => HandleListcom(arg, out result))
-                .WithParsed<TwitchModifyCommand>((TwitchModifyCommand arg) => HandleModcom(arg, out result))
+                .WithParsed<TwitchAddCommand>((TwitchAddCommand arg) => HandleAddcom(arg, CLI, out result))
+                .WithParsed<TwitchDeleteCommand>((TwitchDeleteCommand arg) => HandleDelcom(arg, CLI, out result))
+                .WithParsed<TwitchEditCommand>((TwitchEditCommand arg) => HandleEditcom(arg, CLI, out result))
+                .WithParsed<TwitchListCommand>((TwitchListCommand arg) => HandleListcom(arg, CLI, out result))
+                .WithParsed<TwitchModifyCommand>((TwitchModifyCommand arg) => HandleModcom(arg, CLI, out result))
                 .WithNotParsed((IEnumerable<Error> errs) => CLIUtils.HandleCLIError(errs, "twitch-command", out result));
             return result;
         }

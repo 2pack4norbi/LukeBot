@@ -31,6 +31,7 @@ namespace LukeBot
 
             private string mCookieShorthand = "";
             private string mLogPreamble = "";
+            private string mCurrentUser = "";
             private TcpClient mClient = null;
             private NetworkStream mStream = null;
             private byte[] mRecvBuffer = new byte[4096];
@@ -270,6 +271,22 @@ namespace LukeBot
                 SendObject<NotifyServerMessage>(m);
                 return "";
             }
+
+            public string GetCurrentUser()
+            {
+                if (mCurrentUser.Length == 0)
+                    throw new NoUserSelectedException();
+
+                return mCurrentUser;
+            }
+
+            public void SetCurrentUser(string username)
+            {
+                mCurrentUser = username;
+
+                CurrentUserChangeServerMessage m = new(mSessionData, username);
+                SendObject<CurrentUserChangeServerMessage>(m);
+            }
         }
 
         private enum InterruptReason
@@ -349,14 +366,15 @@ namespace LukeBot
                 return;
             }
 
-            // auth succeeded, give proper permission level and select allowed commands from the pool
-            context.ElevatePermissionLevel(permLevel);
-            context.SelectCommands(mCommands);
-
             // send back confirmation that all is well
             context.SendObject<LoginResponseServerMessage>(
                 new LoginResponseServerMessage(loginMsg, context.mSessionData)
             );
+
+            // give proper permission level and select allowed commands from the pool
+            context.SetCurrentUser(loginMsg.User);
+            context.ElevatePermissionLevel(permLevel);
+            context.SelectCommands(mCommands);
 
             mClients.Add(context.mUsername, context);
 
@@ -373,7 +391,7 @@ namespace LukeBot
                 Logger.Log().Debug("Clearing {0}", client);
                 mClients[client].WaitForShutdown();
                 mClients.Remove(client);
-                Logger.Log().Debug("{0} removed", client);
+                Logger.Log().Debug("{0} cleared", client);
             }
 
             mInterruptReason = InterruptReason.Unknown;

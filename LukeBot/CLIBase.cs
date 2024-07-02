@@ -8,6 +8,5 @@
         void Teardown();
         void AddCommand(string cmd, Command c);
         void AddCommand(string cmd, UserPermissionLevel permissionLevel, CmdDelegate d);
-        void SetPromptPrefix(string prefix);
     }
 }

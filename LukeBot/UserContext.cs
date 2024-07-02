@@ -28,7 +28,8 @@ namespace LukeBot
         private const string PROP_STORE_PERMISSION_LEVEL = "permission";
 
         private Dictionary<ModuleType, IUserModule> mModules = new();
-        private UserPermissionLevel mPermissionLevel;
+        private object mLock = new();
+        private UserPermissionLevel mPermissionLevel = UserPermissionLevel.None;
         private PasswordData mPasswordData = null;
 
         // user data management
@@ -180,34 +181,45 @@ namespace LukeBot
 
         public void EnableModule(ModuleType module)
         {
-            if (mModules.ContainsKey(module))
+            IUserModule m;
+
+            lock (mLock)
             {
-                throw new ModuleEnabledException(module, Username);
+                if (mModules.ContainsKey(module))
+                {
+                    throw new ModuleEnabledException(module, Username);
+                }
+
+                m = LoadModule(module);
+                AddModuleToConfig(module.ToConfString());
+
+                m.Run();
             }
-
-            IUserModule m = LoadModule(module);
-            AddModuleToConfig(module.ToConfString());
-
-            m.Run();
         }
 
         public void DisableModule(ModuleType module)
         {
-            if (!mModules.ContainsKey(module))
+            lock (mLock)
             {
-                throw new ModuleDisabledException(module, Username);
-            }
+                if (!mModules.ContainsKey(module))
+                {
+                    throw new ModuleDisabledException(module, Username);
+                }
 
-            UnloadModule(module);
-            RemoveModuleFromConfig(module.ToConfString());
+                UnloadModule(module);
+                RemoveModuleFromConfig(module.ToConfString());
+            }
         }
 
         public List<ModuleType> GetEnabledModules()
         {
-            List<ModuleType> enabledModules = new(mModules.Keys.Count);
-            foreach (ModuleType m in mModules.Keys)
-                enabledModules.Add(m);
-            return enabledModules;
+            lock (mLock)
+            {
+                List<ModuleType> enabledModules = new(mModules.Keys.Count);
+                foreach (ModuleType m in mModules.Keys)
+                    enabledModules.Add(m);
+                return enabledModules;
+            }
         }
 
         public UserPermissionLevel GetPermissionLevel()
@@ -219,44 +231,59 @@ namespace LukeBot
         // be taken only by remote connections (aka. via ServerCLI)
         public void SetPassword(byte[] passwordHash)
         {
-            mPasswordData = PasswordData.Create(passwordHash);
-            UpdateUserDataInConfig();
+            lock (mLock)
+            {
+                mPasswordData = PasswordData.Create(passwordHash);
+                UpdateUserDataInConfig();
+            }
         }
 
         // Set a new password based on plaintext. This path should
         // be ONLY taken locally (ex. via BasicCLI)
         public void SetPassword(string newPassword)
         {
-            mPasswordData = PasswordData.Create(newPassword);
-            UpdateUserDataInConfig();
+            lock (mLock)
+            {
+                mPasswordData = PasswordData.Create(newPassword);
+                UpdateUserDataInConfig();
+            }
         }
 
         public void SetPermissionLevel(UserPermissionLevel permLevel)
         {
-            mPermissionLevel = permLevel;
-            UpdateUserDataInConfig();
+            lock (mLock)
+            {
+                mPermissionLevel = permLevel;
+                UpdateUserDataInConfig();
+            }
         }
 
         // Validate if a password string is correct. Use ONLY locally.
         public bool ValidatePassword(string password)
         {
-            if (password.Length == 0 && mPasswordData == null)
-                return true;
+            lock (mLock)
+            {
+                if (password.Length == 0 && mPasswordData == null)
+                    return true;
 
-            return mPasswordData.Equals(password);
+                return mPasswordData.Equals(password);
+            }
         }
 
         // Validates if password is correct. For remote connections only.
         public bool ValidatePassword(byte[] passwordHash)
         {
-            if (mPasswordData == null)
+            lock (mLock)
             {
-                // no password data - reject login
-                Logger.Log().Warning("Attempted to validate non-existing password for user {0}", Username);
-                return false;
-            }
+                if (mPasswordData == null)
+                {
+                    // no password data - reject login
+                    Logger.Log().Warning("Attempted to validate non-existing password for user {0}", Username);
+                    return false;
+                }
 
-            return mPasswordData.Equals(passwordHash);
+                return mPasswordData.Equals(passwordHash);
+            }
         }
 
         public void RunModules()

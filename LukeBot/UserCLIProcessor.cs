@@ -34,13 +34,13 @@ namespace LukeBot
         }
     }
 
-    [Verb("select", HelpText = "Select user for further commands")]
-    internal class UserSelectCommand
+    [Verb("switch", HelpText = "Switch to a different user for further commands")]
+    internal class UserSwitchCommand
     {
         [Value(0, MetaName = "username", Required = false, Default = "", HelpText = "Name of user to select. Leave empty to deselect.")]
         public string Name { get; set; }
 
-        public UserSelectCommand()
+        public UserSwitchCommand()
         {
             Name = "";
         }
@@ -117,6 +117,9 @@ namespace LukeBot
 
             try
             {
+                if (mCLI.GetCurrentUser() == args.Name)
+                    mCLI.SetCurrentUser("");
+
                 mLukeBot.RemoveUser(args.Name);
                 msg = "User " + args.Name + " removed.";
             }
@@ -126,24 +129,27 @@ namespace LukeBot
             }
         }
 
-        void HandleSelectUserCommand(UserSelectCommand args, out string msg)
+        void HandleSwitchUserCommand(UserSwitchCommand args, out string msg)
         {
             try
             {
-                mLukeBot.SelectUser(args.Name);
+                if (!mLukeBot.IsUsernameValid(args.Name))
+                    throw new System.ArgumentException("Unknown/invalid username.");
 
-                if (mLukeBot.GetCurrentUser() == null)
-                {
-                    msg = "Cleared selected user";
-                }
-                else
-                {
-                    msg = "Selected user " + mLukeBot.GetCurrentUser().Username;
-                }
+                mCLI.SetCurrentUser(args.Name);
             }
             catch (System.Exception e)
             {
                 msg = "Failed to select user " + args.Name + ": " + e.Message;
+            }
+
+            try
+            {
+                msg = "Selected user " + mCLI.GetCurrentUser();
+            }
+            catch (NoUserSelectedException)
+            {
+                msg = "Cleared selected user";
             }
         }
 
@@ -153,7 +159,7 @@ namespace LukeBot
             {
                 UserContext user;
                 if (args.Name == null || args.Name.Length == 0)
-                    user = mLukeBot.GetCurrentUser();
+                    user = mLukeBot.GetUser(mCLI.GetCurrentUser());
                 else
                     user = mLukeBot.GetUser(args.Name);
 
@@ -181,7 +187,7 @@ namespace LukeBot
             {
                 UserContext user;
                 if (args.Name == null || args.Name.Length == 0)
-                    user = mLukeBot.GetCurrentUser();
+                    user = mLukeBot.GetUser(mCLI.GetCurrentUser());
                 else
                     user = mLukeBot.GetUser(args.Name);
 
@@ -208,11 +214,11 @@ namespace LukeBot
                 mCLI = cliProxy;
 
                 string result = "";
-                Parser.Default.ParseArguments<UserAddCommand, UserListCommand, UserRemoveCommand, UserSelectCommand, UserPasswordCommand, UserUpdateCommand>(args)
+                Parser.Default.ParseArguments<UserAddCommand, UserListCommand, UserRemoveCommand, UserSwitchCommand, UserPasswordCommand, UserUpdateCommand>(args)
                     .WithParsed<UserAddCommand>((UserAddCommand args) => HandleAddUserCommand(args, out result))
                     .WithParsed<UserListCommand>((UserListCommand args) => HandleListUsersCommand(args, out result))
                     .WithParsed<UserRemoveCommand>((UserRemoveCommand args) => HandleRemoveUserCommand(args, out result))
-                    .WithParsed<UserSelectCommand>((UserSelectCommand args) => HandleSelectUserCommand(args, out result))
+                    .WithParsed<UserSwitchCommand>((UserSwitchCommand args) => HandleSwitchUserCommand(args, out result))
                     .WithParsed<UserPasswordCommand>((UserPasswordCommand args) => HandlePasswordUserCommand(args, out result))
                     .WithParsed<UserUpdateCommand>((UserUpdateCommand args) => HandleUpdateUserCommand(args, out result))
                     .WithNotParsed((IEnumerable<Error> errs) => CLIUtils.HandleCLIError(errs, COMMAND_NAME, out result));

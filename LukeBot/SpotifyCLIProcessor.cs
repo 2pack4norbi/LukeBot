@@ -35,19 +35,18 @@ namespace LukeBot
     internal class SpotifyCLIProcessor: ICLIProcessor
     {
         private LukeBot mLukeBot;
-        private CLIMessageProxy mCLI;
 
-        private void CheckForLogin(string user)
+        private void CheckForLogin(CLIMessageProxy CLI)
         {
             Path path = Path.Start()
                 .Push(Constants.PROP_STORE_USER_DOMAIN)
-                .Push(user)
+                .Push(CLI.GetCurrentUser())
                 .Push(Constants.SPOTIFY_MODULE_NAME)
                 .Push(Constants.PROP_STORE_LOGIN_PROP);
 
             if (!Conf.TryGet<string>(path, out string login))
             {
-                login = mCLI.Query(false, "Spotify login for user " + user);
+                login = CLI.Query(false, "Spotify login for user " + CLI.GetCurrentUser());
                 if (login.Length == 0)
                 {
                     throw new ArgumentException("No login provided");
@@ -57,13 +56,13 @@ namespace LukeBot
             }
         }
 
-        private void HandleLoginSubverb(SpotifyLoginSubverb arg, out string result)
+        private void HandleLoginSubverb(SpotifyLoginSubverb arg, CLIMessageProxy CLI, out string result)
         {
             result = "";
 
             try
             {
-                GlobalModules.Spotify.UpdateLoginForUser(mLukeBot.GetCurrentUser().Username, arg.Login);
+                GlobalModules.Spotify.UpdateLoginForUser(mLukeBot.GetUser(CLI.GetCurrentUser()).Username, arg.Login);
                 result = "Successfully updated Spotify login.";
             }
             catch (System.Exception e)
@@ -72,14 +71,14 @@ namespace LukeBot
             }
         }
 
-        public void HandleEnableSubverb(SpotifyEnableSubverb arg, out string msg)
+        public void HandleEnableSubverb(SpotifyEnableSubverb arg, CLIMessageProxy CLI, out string msg)
         {
             msg = "";
 
             try
             {
-                CheckForLogin(mLukeBot.GetCurrentUser().Username);
-                mLukeBot.GetCurrentUser().EnableModule(ModuleType.Spotify);
+                CheckForLogin(CLI);
+                mLukeBot.GetUser(CLI.GetCurrentUser()).EnableModule(ModuleType.Spotify);
                 msg = "Enabled module " + ModuleType.Spotify;
             }
             catch (System.Exception e)
@@ -88,13 +87,13 @@ namespace LukeBot
             }
         }
 
-        public void HandleDisableSubverb(SpotifyDisableSubverb arg, out string msg)
+        public void HandleDisableSubverb(SpotifyDisableSubverb arg, CLIMessageProxy CLI, out string msg)
         {
             msg = "";
 
             try
             {
-                mLukeBot.GetCurrentUser().DisableModule(ModuleType.Spotify);
+                mLukeBot.GetUser(CLI.GetCurrentUser()).DisableModule(ModuleType.Spotify);
                 msg = "Disabled module " + ModuleType.Spotify;
             }
             catch (System.Exception e)
@@ -109,13 +108,11 @@ namespace LukeBot
 
             UserInterface.CLI.AddCommand(Constants.SPOTIFY_MODULE_NAME, UserPermissionLevel.User, (CLIMessageProxy cliProxy, string[] args) =>
             {
-                mCLI = cliProxy;
-
                 string result = "";
                 Parser.Default.ParseArguments<SpotifyLoginSubverb, SpotifyEnableSubverb, SpotifyDisableSubverb>(args)
-                    .WithParsed<SpotifyLoginSubverb>((SpotifyLoginSubverb arg) => HandleLoginSubverb(arg, out result))
-                    .WithParsed<SpotifyEnableSubverb>((SpotifyEnableSubverb arg) => HandleEnableSubverb(arg, out result))
-                    .WithParsed<SpotifyDisableSubverb>((SpotifyDisableSubverb arg) => HandleDisableSubverb(arg, out result))
+                    .WithParsed<SpotifyLoginSubverb>((SpotifyLoginSubverb arg) => HandleLoginSubverb(arg, cliProxy, out result))
+                    .WithParsed<SpotifyEnableSubverb>((SpotifyEnableSubverb arg) => HandleEnableSubverb(arg, cliProxy, out result))
+                    .WithParsed<SpotifyDisableSubverb>((SpotifyDisableSubverb arg) => HandleDisableSubverb(arg, cliProxy, out result))
                     .WithNotParsed((IEnumerable<Error> errs) => CLIUtils.HandleCLIError(errs, Constants.SPOTIFY_MODULE_NAME, out result));
                 return result;
             });

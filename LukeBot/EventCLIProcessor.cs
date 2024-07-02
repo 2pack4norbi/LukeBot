@@ -69,12 +69,12 @@ namespace LukeBot
         private const string COMMAND_NAME = "event";
         private LukeBot mLukeBot;
 
-        private string GetDefaultQueuedDispatcher()
+        private string GetDefaultQueuedDispatcher(CLIMessageProxy CLI)
         {
-            return "Twitch_QueuedDispatcher_" + mLukeBot.GetCurrentUser().Username;
+            return "Twitch_QueuedDispatcher_" + CLI.GetCurrentUser();
         }
 
-        void HandleTestCommand(EventTestCommand args, out string msg)
+        void HandleTestCommand(EventTestCommand args, CLIMessageProxy CLI, out string msg)
         {
             try
             {
@@ -82,7 +82,7 @@ namespace LukeBot
                 // See LukeBot.Common.Utils.ConvertArgString() for details
                 IEnumerable<(string, string)> eventArgs = Utils.ConvertArgStringsToTuples(args.Args);
 
-                Comms.Event.User(mLukeBot.GetCurrentUser().Username).TestEvent(args.Event, eventArgs);
+                Comms.Event.User(CLI.GetCurrentUser()).TestEvent(args.Event, eventArgs);
                 msg = "Test event " + args.Event + " emitted";
             }
             catch (System.Exception e)
@@ -91,11 +91,11 @@ namespace LukeBot
             }
         }
 
-        void HandleInfoCommand(EventInfoCommand args, out string msg)
+        void HandleInfoCommand(EventInfoCommand args, CLIMessageProxy CLI, out string msg)
         {
             try
             {
-                EventInfo e = Comms.Event.User(mLukeBot.GetCurrentUser().Username).GetEventInfo(args.Event);
+                EventInfo e = Comms.Event.User(CLI.GetCurrentUser()).GetEventInfo(args.Event);
                 msg = e.Name + " event:\n";
                 msg += "  " + e.Description + "\n";
                 msg += "\n";
@@ -117,14 +117,13 @@ namespace LukeBot
             }
         }
 
-        void HandleStatusCommand(EventStatusCommand args, out string msg)
+        void HandleStatusCommand(EventStatusCommand args, CLIMessageProxy CLI, out string msg)
         {
             try
             {
-                // TODO
                 msg = "Dispatchers (name - type):\n";
 
-                IEnumerable<EventDispatcherStatus> statuses = Comms.Event.User(mLukeBot.GetCurrentUser().Username).GetDispatcherStatuses();
+                IEnumerable<EventDispatcherStatus> statuses = Comms.Event.User(CLI.GetCurrentUser()).GetDispatcherStatuses();
 
                 foreach (EventDispatcherStatus s in statuses)
                 {
@@ -145,7 +144,7 @@ namespace LukeBot
 
                 msg += "Events (name - dispatcher):\n";
 
-                IEnumerable<EventInfo> events = Comms.Event.User(mLukeBot.GetCurrentUser().Username).ListEvents();
+                IEnumerable<EventInfo> events = Comms.Event.User(CLI.GetCurrentUser()).ListEvents();
 
                 foreach (EventInfo e in events)
                 {
@@ -165,16 +164,16 @@ namespace LukeBot
             }
         }
 
-        void HandleClearCommand(EventClearCommand args, out string msg)
+        void HandleClearCommand(EventClearCommand args, CLIMessageProxy CLI, out string msg)
         {
             string dispatcher = args.Dispatcher;
 
             try
             {
                 if (dispatcher == null || dispatcher.Length == 0)
-                    dispatcher = GetDefaultQueuedDispatcher();
+                    dispatcher = GetDefaultQueuedDispatcher(CLI);
 
-                EventDispatcher dispatcherObject = Comms.Event.User(mLukeBot.GetCurrentUser().Username).Dispatcher(dispatcher);
+                EventDispatcher dispatcherObject = Comms.Event.User(CLI.GetCurrentUser()).Dispatcher(dispatcher);
                 dispatcherObject.Clear();
                 dispatcherObject.Skip();
                 msg = "Events on dispatcher " + dispatcher + " cleared.";
@@ -185,16 +184,16 @@ namespace LukeBot
             }
         }
 
-        void HandleEnableCommand(EventEnableCommand args, out string msg)
+        void HandleEnableCommand(EventEnableCommand args, CLIMessageProxy CLI, out string msg)
         {
             string dispatcher = args.Dispatcher;
 
             try
             {
                 if (dispatcher == null || dispatcher.Length == 0)
-                    dispatcher = GetDefaultQueuedDispatcher();
+                    dispatcher = GetDefaultQueuedDispatcher(CLI);
 
-                Comms.Event.User(mLukeBot.GetCurrentUser().Username).Dispatcher(dispatcher).Enable();
+                Comms.Event.User(CLI.GetCurrentUser()).Dispatcher(dispatcher).Enable();
                 msg = "Dispatcher " + dispatcher + " enabled.";
             }
             catch (System.Exception e)
@@ -203,16 +202,16 @@ namespace LukeBot
             }
         }
 
-        void HandleDisableCommand(EventDisableCommand args, out string msg)
+        void HandleDisableCommand(EventDisableCommand args, CLIMessageProxy CLI, out string msg)
         {
             string dispatcher = args.Dispatcher;
 
             try
             {
                 if (dispatcher == null || dispatcher.Length == 0)
-                    dispatcher = GetDefaultQueuedDispatcher();
+                    dispatcher = GetDefaultQueuedDispatcher(CLI);
 
-                Comms.Event.User(mLukeBot.GetCurrentUser().Username).Dispatcher(dispatcher).Disable();
+                Comms.Event.User(CLI.GetCurrentUser()).Dispatcher(dispatcher).Disable();
                 msg = "Dispatcher " + dispatcher + " disabled.";
             }
             catch (System.Exception e)
@@ -221,16 +220,16 @@ namespace LukeBot
             }
         }
 
-        void HandleHoldCommand(EventHoldCommand args, out string msg)
+        void HandleHoldCommand(EventHoldCommand args, CLIMessageProxy CLI, out string msg)
         {
             string dispatcher = args.Dispatcher;
 
             try
             {
                 if (dispatcher == null || dispatcher.Length == 0)
-                    dispatcher = GetDefaultQueuedDispatcher();
+                    dispatcher = GetDefaultQueuedDispatcher(CLI);
 
-                Comms.Event.User(mLukeBot.GetCurrentUser().Username).Dispatcher(dispatcher).Hold();
+                Comms.Event.User(CLI.GetCurrentUser()).Dispatcher(dispatcher).Hold();
                 msg = "Dispatcher " + dispatcher + " put on hold.";
             }
             catch (System.Exception e)
@@ -239,16 +238,16 @@ namespace LukeBot
             }
         }
 
-        void HandleSkipCommand(EventSkipCommand args, out string msg)
+        void HandleSkipCommand(EventSkipCommand args, CLIMessageProxy CLI, out string msg)
         {
             string dispatcher = args.Dispatcher;
 
             try
             {
                 if (dispatcher == null || dispatcher.Length == 0)
-                    dispatcher = GetDefaultQueuedDispatcher();
+                    dispatcher = GetDefaultQueuedDispatcher(CLI);
 
-                Comms.Event.User(mLukeBot.GetCurrentUser().Username).Dispatcher(dispatcher).Skip();
+                Comms.Event.User(CLI.GetCurrentUser()).Dispatcher(dispatcher).Skip();
                 msg = "Dispatcher " + dispatcher + " event skipped.";
             }
             catch (System.Exception e)
@@ -264,15 +263,16 @@ namespace LukeBot
             UserInterface.CLI.AddCommand(COMMAND_NAME, UserPermissionLevel.User, (CLIMessageProxy cliProxy, string[] args) =>
             {
                 string result = "";
+
                 Parser.Default.ParseArguments<EventTestCommand, EventInfoCommand, EventStatusCommand, EventClearCommand, EventEnableCommand, EventDisableCommand, EventHoldCommand, EventSkipCommand>(args)
-                    .WithParsed<EventTestCommand>((EventTestCommand args) => HandleTestCommand(args, out result))
-                    .WithParsed<EventInfoCommand>((EventInfoCommand args) => HandleInfoCommand(args, out result))
-                    .WithParsed<EventStatusCommand>((EventStatusCommand args) => HandleStatusCommand(args, out result))
-                    .WithParsed<EventClearCommand>((EventClearCommand args) => HandleClearCommand(args, out result))
-                    .WithParsed<EventEnableCommand>((EventEnableCommand args) => HandleEnableCommand(args, out result))
-                    .WithParsed<EventDisableCommand>((EventDisableCommand args) => HandleDisableCommand(args, out result))
-                    .WithParsed<EventHoldCommand>((EventHoldCommand args) => HandleHoldCommand(args, out result))
-                    .WithParsed<EventSkipCommand>((EventSkipCommand args) => HandleSkipCommand(args, out result))
+                    .WithParsed<EventTestCommand>((EventTestCommand args) => HandleTestCommand(args, cliProxy, out result))
+                    .WithParsed<EventInfoCommand>((EventInfoCommand args) => HandleInfoCommand(args, cliProxy, out result))
+                    .WithParsed<EventStatusCommand>((EventStatusCommand args) => HandleStatusCommand(args, cliProxy, out result))
+                    .WithParsed<EventClearCommand>((EventClearCommand args) => HandleClearCommand(args, cliProxy, out result))
+                    .WithParsed<EventEnableCommand>((EventEnableCommand args) => HandleEnableCommand(args, cliProxy, out result))
+                    .WithParsed<EventDisableCommand>((EventDisableCommand args) => HandleDisableCommand(args, cliProxy, out result))
+                    .WithParsed<EventHoldCommand>((EventHoldCommand args) => HandleHoldCommand(args, cliProxy, out result))
+                    .WithParsed<EventSkipCommand>((EventSkipCommand args) => HandleSkipCommand(args, cliProxy, out result))
                     .WithNotParsed((IEnumerable<Error> errs) => CLIUtils.HandleCLIError(errs, COMMAND_NAME, out result));
                 return result;
             });

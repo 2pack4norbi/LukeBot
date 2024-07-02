@@ -91,12 +91,12 @@ namespace LukeBot
     {
         private LukeBot mLukeBot;
 
-        public void HandleAdd(WidgetAddCommand cmd, out string msg)
+        public void HandleAddCommand(WidgetAddCommand cmd, CLIMessageProxy CLI, out string msg)
         {
             string addr;
             try
             {
-                string lbUser = mLukeBot.GetCurrentUser().Username;
+                string lbUser = CLI.GetCurrentUser();
                 addr = GlobalModules.Widget.AddWidget(lbUser, cmd.Type, cmd.Name);
             }
             catch (System.Exception e)
@@ -108,13 +108,13 @@ namespace LukeBot
             msg = "Added new widget at address: " + addr;
         }
 
-        public void HandleAddress(WidgetAddressCommand cmd, out string msg)
+        public void HandleAddressCommand(WidgetAddressCommand cmd, CLIMessageProxy CLI, out string msg)
         {
             WidgetDesc wd;
 
             try
             {
-                string lbUser = mLukeBot.GetCurrentUser().Username;
+                string lbUser = CLI.GetCurrentUser();
                 wd = GlobalModules.Widget.GetWidgetInfo(lbUser, cmd.Id);
             }
             catch (System.Exception e)
@@ -126,13 +126,13 @@ namespace LukeBot
             msg = wd.Address;
         }
 
-        public void HandleList(WidgetListCommand cmd, out string msg)
+        public void HandleListCommand(WidgetListCommand cmd, CLIMessageProxy CLI, out string msg)
         {
             List<WidgetDesc> widgets;
 
             try
             {
-                string lbUser = mLukeBot.GetCurrentUser().Username;
+                string lbUser = CLI.GetCurrentUser();
                 widgets = GlobalModules.Widget.ListUserWidgets(lbUser);
             }
             catch (System.Exception e)
@@ -151,14 +151,14 @@ namespace LukeBot
             }
         }
 
-        public void HandleInfo(WidgetInfoCommand cmd, out string msg)
+        public void HandleInfoCommand(WidgetInfoCommand cmd, CLIMessageProxy CLI, out string msg)
         {
             WidgetDesc wd;
             WidgetConfiguration conf;
 
             try
             {
-                string lbUser = mLukeBot.GetCurrentUser().Username;
+                string lbUser = CLI.GetCurrentUser();
                 wd = GlobalModules.Widget.GetWidgetInfo(lbUser, cmd.Id);
                 conf = GlobalModules.Widget.GetWidgetConfiguration(lbUser, cmd.Id);
             }
@@ -172,11 +172,11 @@ namespace LukeBot
             msg += "\nConfiguration:\n" + conf.ToFormattedString();
         }
 
-        public void HandleDelete(WidgetDeleteCommand cmd, out string msg)
+        public void HandleDeleteCommand(WidgetDeleteCommand cmd, CLIMessageProxy CLI, out string msg)
         {
             try
             {
-                string lbUser = mLukeBot.GetCurrentUser().Username;
+                string lbUser = CLI.GetCurrentUser();
                 GlobalModules.Widget.DeleteWidget(lbUser, cmd.Id);
             }
             catch (System.Exception e)
@@ -188,7 +188,7 @@ namespace LukeBot
             msg = "Widget " + cmd.Id + " deleted.";
         }
 
-        public void HandleUpdate(WidgetUpdateCommand arg, out string msg)
+        public void HandleUpdateCommand(WidgetUpdateCommand arg, CLIMessageProxy CLI, out string msg)
         {
             msg = "";
 
@@ -196,7 +196,7 @@ namespace LukeBot
             {
                 IEnumerable<(string, string)> changes = Utils.ConvertArgStringsToTuples(arg.Changes);
 
-                string lbUser = mLukeBot.GetCurrentUser().Username;
+                string lbUser = CLI.GetCurrentUser();
                 GlobalModules.Widget.UpdateWidgetConfiguration(lbUser, arg.Id, changes);
 
                 msg = arg.Id + " widget's configuration updated successfully.";
@@ -207,13 +207,13 @@ namespace LukeBot
             }
         }
 
-        public void HandleEnable(WidgetEnableCommand arg, out string msg)
+        public void HandleEnableCommand(WidgetEnableCommand arg, CLIMessageProxy CLI, out string msg)
         {
             msg = "";
 
             try
             {
-                mLukeBot.GetCurrentUser().EnableModule(Module.ModuleType.Widget);
+                mLukeBot.GetUser(CLI.GetCurrentUser()).EnableModule(Module.ModuleType.Widget);
                 msg = "Enabled module " + Module.ModuleType.Widget;
             }
             catch (System.Exception e)
@@ -222,13 +222,13 @@ namespace LukeBot
             }
         }
 
-        public void HandleDisable(WidgetDisableCommand arg, out string msg)
+        public void HandleDisableCommand(WidgetDisableCommand arg, CLIMessageProxy CLI, out string msg)
         {
             msg = "";
 
             try
             {
-                mLukeBot.GetCurrentUser().DisableModule(Module.ModuleType.Widget);
+                mLukeBot.GetUser(CLI.GetCurrentUser()).DisableModule(Module.ModuleType.Widget);
                 msg = "Disabled module " + Module.ModuleType.Widget;
             }
             catch (System.Exception e)
@@ -246,14 +246,14 @@ namespace LukeBot
                 string result = "";
                 Parser.Default.ParseArguments<WidgetAddCommand, WidgetAddressCommand, WidgetListCommand, WidgetInfoCommand,
                         WidgetDeleteCommand, WidgetUpdateCommand, WidgetEnableCommand, WidgetDisableCommand>(args)
-                    .WithParsed<WidgetAddCommand>((WidgetAddCommand arg) => HandleAdd(arg, out result))
-                    .WithParsed<WidgetAddressCommand>((WidgetAddressCommand arg) => HandleAddress(arg, out result))
-                    .WithParsed<WidgetListCommand>((WidgetListCommand arg) => HandleList(arg, out result))
-                    .WithParsed<WidgetInfoCommand>((WidgetInfoCommand arg) => HandleInfo(arg, out result))
-                    .WithParsed<WidgetDeleteCommand>((WidgetDeleteCommand arg) => HandleDelete(arg, out result))
-                    .WithParsed<WidgetUpdateCommand>((WidgetUpdateCommand arg) => HandleUpdate(arg, out result))
-                    .WithParsed<WidgetEnableCommand>((WidgetEnableCommand arg) => HandleEnable(arg, out result))
-                    .WithParsed<WidgetDisableCommand>((WidgetDisableCommand arg) => HandleDisable(arg, out result))
+                    .WithParsed<WidgetAddCommand>((WidgetAddCommand arg) => HandleAddCommand(arg, cliProxy, out result))
+                    .WithParsed<WidgetAddressCommand>((WidgetAddressCommand arg) => HandleAddressCommand(arg, cliProxy, out result))
+                    .WithParsed<WidgetListCommand>((WidgetListCommand arg) => HandleListCommand(arg, cliProxy, out result))
+                    .WithParsed<WidgetInfoCommand>((WidgetInfoCommand arg) => HandleInfoCommand(arg, cliProxy, out result))
+                    .WithParsed<WidgetDeleteCommand>((WidgetDeleteCommand arg) => HandleDeleteCommand(arg, cliProxy, out result))
+                    .WithParsed<WidgetUpdateCommand>((WidgetUpdateCommand arg) => HandleUpdateCommand(arg, cliProxy, out result))
+                    .WithParsed<WidgetEnableCommand>((WidgetEnableCommand arg) => HandleEnableCommand(arg, cliProxy, out result))
+                    .WithParsed<WidgetDisableCommand>((WidgetDisableCommand arg) => HandleDisableCommand(arg, cliProxy, out result))
                     .WithNotParsed((IEnumerable<Error> errs) => CLIUtils.HandleCLIError(errs, Constants.WIDGET_MODULE_NAME, out result));
                 return result;
             });

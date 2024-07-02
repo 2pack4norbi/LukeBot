@@ -7,6 +7,7 @@ using LukeBot.Communication;
 using System.Collections.Generic;
 using System;
 using System.Linq;
+using System.Threading;
 
 
 namespace LukeBot
@@ -14,7 +15,7 @@ namespace LukeBot
     internal class LukeBot: IUserManager
     {
         private Dictionary<string, UserContext> mUsers = new();
-        private UserContext mCurrentUser = null;
+        private object mUsersLock = new();
         private List<ICLIProcessor> mCommandProcessors = new List<ICLIProcessor>{
             new EventCLIProcessor(),
             new ModuleCLIProcessor(),
@@ -39,10 +40,15 @@ namespace LukeBot
 
         public UserPermissionLevel AuthenticateUser(string user, byte[] pwdHash, out string reason)
         {
-            if (!mUsers.TryGetValue(user, out UserContext ctx))
+            UserContext ctx;
+
+            lock (mUsersLock)
             {
-                reason = "User not found";
-                return UserPermissionLevel.None;
+                if (!mUsers.TryGetValue(user, out ctx))
+                {
+                    reason = "User not found";
+                    return UserPermissionLevel.None;
+                }
             }
 
             if (!ctx.ValidatePassword(pwdHash))
@@ -60,14 +66,13 @@ namespace LukeBot
             if (AuthenticateUser(user, currentPwdHash, out reason) == UserPermissionLevel.None)
                 return false;
 
-            mUsers[user].SetPassword(newPwdHash);
+            lock (mUsersLock)
+            {
+                mUsers[user].SetPassword(newPwdHash);
+            }
+
             reason = "";
             return true;
-        }
-
-        public string GetCurrentUserName()
-        {
-            return GetCurrentUser().Username;
         }
 
 
@@ -175,15 +180,18 @@ namespace LukeBot
 
         private void CreateAndRunUser(string lbUsername)
         {
-            if (mUsers.ContainsKey(lbUsername) || lbUsername == Constants.LUKEBOT_USER_ID)
-                throw new UsernameNotAvailableException(lbUsername);
+            lock (mUsersLock)
+            {
+                if (mUsers.ContainsKey(lbUsername) || lbUsername == Constants.LUKEBOT_USER_ID)
+                    throw new UsernameNotAvailableException(lbUsername);
 
-            Comms.Event.AddUser(lbUsername);
+                Comms.Event.AddUser(lbUsername);
 
-            UserContext uc = new UserContext(lbUsername);
-            uc.RunModules();
+                UserContext uc = new UserContext(lbUsername);
+                uc.RunModules();
 
-            mUsers.Add(lbUsername, uc);
+                mUsers.Add(lbUsername, uc);
+            }
         }
 
         public void AddUser(string lbUsername)
@@ -194,48 +202,41 @@ namespace LukeBot
 
         public void RemoveUser(string lbUsername)
         {
-            UserContext u = mUsers[lbUsername];
-            u.RequestModuleShutdown();
-            u.WaitForModulesShutdown();
-
-            // deselect current user if it is the one we remove
-            if (mCurrentUser != null && mCurrentUser.Username == lbUsername)
-                SelectUser("");
-
-            RemoveUserFromConfig(lbUsername);
-            mUsers.Remove(lbUsername);
-            Comms.Event.RemoveUser(lbUsername);
-        }
-
-        public void SelectUser(string lbUsername)
-        {
-            if (lbUsername.Length == 0)
+            lock (mUsersLock)
             {
-                mCurrentUser = null;
-                UserInterface.CLI.SetPromptPrefix("");
-                return;
-            }
+                UserContext u = mUsers[lbUsername];
+                u.RequestModuleShutdown();
+                u.WaitForModulesShutdown();
 
-            mCurrentUser = mUsers[lbUsername];
-            UserInterface.CLI.SetPromptPrefix(mCurrentUser.Username);
+                RemoveUserFromConfig(lbUsername);
+                mUsers.Remove(lbUsername);
+                Comms.Event.RemoveUser(lbUsername);
+            }
         }
 
         public List<string> GetUsernames()
         {
-            return mUsers.Keys.ToList<string>();
+            lock (mUsersLock)
+            {
+                return mUsers.Keys.ToList<string>();
+            }
         }
 
-        public UserContext GetCurrentUser()
+        // returns true if @p username exists, or is empty; false otherwise
+        public bool IsUsernameValid(string username)
         {
-            if (mCurrentUser == null)
-                throw new NoUserSelectedException();
-
-            return mCurrentUser;
+            lock (mUsersLock)
+            {
+                return (username.Length == 0) || mUsers.ContainsKey(username);
+            }
         }
 
         public UserContext GetUser(string username)
         {
-            return mUsers[username];
+            lock (mUsersLock)
+            {
+                return mUsers[username];
+            }
         }
 
         public void Run(ProgramOptions opts)

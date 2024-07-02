@@ -38,13 +38,13 @@ namespace LukeBot
         private const string COMMAND_NAME = "module";
         private LukeBot mLukeBot;
 
-        void HandleListCommand(ModuleListCommand args, out string msg)
+        void HandleListCommand(ModuleListCommand args, CLIMessageProxy CLI, out string msg)
         {
             try
             {
                 msg = "Enabled modules:";
 
-                List<ModuleType> modules = mLukeBot.GetCurrentUser().GetEnabledModules();
+                List<ModuleType> modules = mLukeBot.GetUser(CLI.GetCurrentUser()).GetEnabledModules();
                 foreach (ModuleType m in modules)
                 {
                     msg += "\n  " + m.ToConfString();
@@ -56,12 +56,12 @@ namespace LukeBot
             }
         }
 
-        void HandleEnableCommand(ModuleEnableCommand args, out string msg)
+        void HandleEnableCommand(ModuleEnableCommand args, CLIMessageProxy CLI, out string msg)
         {
             try
             {
                 ModuleType type = args.Type.GetModuleTypeEnum();
-                mLukeBot.GetCurrentUser().EnableModule(type);
+                mLukeBot.GetUser(CLI.GetCurrentUser()).EnableModule(type);
                 msg = "Enabled module " + type.ToString();
             }
             catch (System.Exception e)
@@ -70,12 +70,12 @@ namespace LukeBot
             }
         }
 
-        void HandleDisableCommand(ModuleDisableCommand args, out string msg)
+        void HandleDisableCommand(ModuleDisableCommand args, CLIMessageProxy CLI, out string msg)
         {
             try
             {
                 ModuleType type = args.Type.GetModuleTypeEnum();
-                mLukeBot.GetCurrentUser().DisableModule(type);
+                mLukeBot.GetUser(CLI.GetCurrentUser()).DisableModule(type);
                 msg = "Disabled module " + type.ToString();
             }
             catch (System.Exception e)
@@ -92,9 +92,9 @@ namespace LukeBot
             {
                 string result = "";
                 Parser.Default.ParseArguments<ModuleListCommand, ModuleEnableCommand, ModuleDisableCommand>(args)
-                    .WithParsed<ModuleListCommand>((ModuleListCommand args) => HandleListCommand(args, out result))
-                    .WithParsed<ModuleEnableCommand>((ModuleEnableCommand args) => HandleEnableCommand(args, out result))
-                    .WithParsed<ModuleDisableCommand>((ModuleDisableCommand args) => HandleDisableCommand(args, out result))
+                    .WithParsed<ModuleListCommand>((ModuleListCommand args) => HandleListCommand(args, cliProxy, out result))
+                    .WithParsed<ModuleEnableCommand>((ModuleEnableCommand args) => HandleEnableCommand(args, cliProxy, out result))
+                    .WithParsed<ModuleDisableCommand>((ModuleDisableCommand args) => HandleDisableCommand(args, cliProxy, out result))
                     .WithNotParsed((IEnumerable<Error> errs) => CLIUtils.HandleCLIError(errs, COMMAND_NAME, out result));
                 return result;
             });

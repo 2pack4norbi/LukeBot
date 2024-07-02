@@ -23,10 +23,5 @@ namespace LukeBot
          * should be set when authentication fails to provide a reason why.
          */
         bool ChangeUserPassword(string user, byte[] currentPwdHash, byte[] newPwdHash, out string reason);
-
-        /**
-         * Returns a string with the name of currently selected/logged in user.
-         */
-        string GetCurrentUserName();
     }
 }
