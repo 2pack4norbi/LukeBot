@@ -32,7 +32,7 @@ namespace LukeBot.API
 
                     JObject errObj = JObject.Parse(respStringTask.Result);
                     if (errObj.ContainsKey("error"))
-                        error = (string)errObj["error"];
+                        error = errObj["error"].ToString();
 
                     if (errObj.ContainsKey("message"))
                         message = (string)errObj["message"];
