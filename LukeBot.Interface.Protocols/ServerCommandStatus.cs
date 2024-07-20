@@ -5,5 +5,6 @@ namespace LukeBot.Interface.Protocols
         Success = 0,
         UnknownCommand,
         InvalidArgument,
+        NotPermitted,
     }
 }

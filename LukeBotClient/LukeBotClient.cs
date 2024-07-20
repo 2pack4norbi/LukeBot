@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
@@ -28,9 +30,10 @@ namespace LukeBotClient
         private SessionData mSessionData = null;
         private byte[] mRecvBuffer = null;
         private Thread mRecvThread = null;
+        private Queue<string> mRecvQueue = new();
         private bool mRecvThreadDone = false;
         private Mutex mPrintMutex = new();
-        private State mState = State.Init;
+        private volatile State mState = State.Init;
         private ManualResetEvent mAwaitResponseEvent = new(true);
         private const string PROMPT_SUFFIX = "> ";
         private string mCurrentPrompt = "";
@@ -44,14 +47,38 @@ namespace LukeBotClient
         {
             mPrintMutex.WaitOne();
 
-            Console.Write(text);
+            Console.Write('\r' + text);
 
             mPrintMutex.ReleaseMutex();
         }
 
         private void PrintLine(string line)
         {
-            Print('\r' + line + '\n' + mCurrentPrompt);
+            Print(line + '\n' + (mState == State.InCLI ? mCurrentPrompt : ""));
+        }
+
+        private string Ask(string question)
+        {
+            string response = "";
+            while (response != "y" && response != "n")
+            {
+                Print(question + "(y/n): ");
+                response = Console.ReadLine();
+
+                if (response != "y" && response != "n")
+                    PrintLine("Invalid response: " + response);
+            }
+
+            return response;
+        }
+
+        private string Query(bool maskAnswer, string question)
+        {
+            Print(question + ": ");
+            if (maskAnswer)
+                return LukeBot.Common.Utils.ReadLineMasked(true);
+            else
+                return Console.ReadLine();
         }
 
         private async Task Send(string cmd)
@@ -90,12 +117,26 @@ namespace LukeBotClient
         private async Task<T> ReceiveObject<T>()
             where T: ServerMessage, new()
         {
-            string ret = await Receive();
+            if (mRecvQueue.Count == 0)
+            {
+                string ret = await Receive();
 
-            if (ret.Length > 0)
-                return JsonConvert.DeserializeObject<T>(ret, new ServerMessageDeserializer());
-            else
-                return new ServerMessage() as T;
+                if (ret.Length == 0)
+                    return null;
+
+                List<string> msgs = LukeBot.Common.Utils.SplitJSONs(ret);
+
+                if (msgs == null)
+                    return null;
+
+                foreach (string m in msgs)
+                {
+                    mRecvQueue.Enqueue(m);
+                }
+            }
+
+            Debug.Assert(mRecvQueue.Count > 0, "Receive Queue should have messages in it at this point");
+            return JsonConvert.DeserializeObject<T>(mRecvQueue.Dequeue(), new ServerMessageDeserializer());
         }
 
         public async void ReceiveThreadMain()
@@ -127,6 +168,31 @@ namespace LukeBotClient
                     PrintLine(m.Message);
                     break;
                 }
+                case ServerMessageType.Query:
+                {
+                    PrintLine("state = " + mState);
+
+                    if (mState != State.AwaitingResponse)
+                    {
+                        PrintLine("WARNING - Queries should only be received when awaiting a response to a Command");
+                        break;
+                    }
+
+                    QueryServerMessage m = msg as QueryServerMessage;
+                    string answer;
+                    if (m.IsYesNo)
+                    {
+                        answer = Ask(m.Query);
+                    }
+                    else
+                    {
+                        answer = Query(m.MaskAnswer, m.Query);
+                    }
+
+                    QueryResponseServerMessage r = new(m, answer);
+                    await SendObject(r);
+                    break;
+                }
                 case ServerMessageType.CurrentUserChange:
                 {
                     CurrentUserChangeServerMessage m = msg as CurrentUserChangeServerMessage;
@@ -150,6 +216,9 @@ namespace LukeBotClient
                     case ServerCommandStatus.UnknownCommand:
                         PrintLine("Unknown command");
                         break;
+                    case ServerCommandStatus.NotPermitted:
+                        PrintLine("Command not permitted.");
+                        break;
                     default:
                         PrintLine("Unknown command status received");
                         break;
@@ -159,7 +228,7 @@ namespace LukeBotClient
                     break;
                 }
                 default:
-                    PrintLine("Unrecognized message");
+                    PrintLine("Unrecognized message: " + msg);
                     break;
                 }
             }
@@ -250,9 +319,9 @@ namespace LukeBotClient
                             break;
                         }
 
+                        mState = State.AwaitingResponse;
                         CommandServerMessage cmdMessage = new(mSessionData, msg);
                         await SendObject<CommandServerMessage>(cmdMessage);
-                        mState = State.AwaitingResponse;
                         break;
                     case State.AwaitingResponse:
                         mAwaitResponseEvent.WaitOne();
@@ -274,6 +343,7 @@ namespace LukeBotClient
             catch (System.Exception e)
             {
                 PrintLine("Exception caught: " + e.Message);
+                PrintLine("Stack trace:\n" + e.StackTrace);
             }
         }
     }

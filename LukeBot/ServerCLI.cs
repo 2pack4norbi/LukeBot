@@ -6,6 +6,8 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
+using LukeBot.Common;
+using LukeBot.Config;
 using LukeBot.Logging;
 using LukeBot.Interface.Protocols;
 using Newtonsoft.Json;
@@ -39,6 +41,11 @@ namespace LukeBot
             private bool mRecvThreadDone = false;
             private System.Timers.Timer mPingTimer = null;
             private string mCurrentPingChallenge = "";
+
+            // handling queries - response must be picked up by Receive thread
+            private AutoResetEvent mQueryResponseEvent = new(false);
+            private QueryServerMessage mSentQuery = null; // to validate received message
+            private QueryResponseServerMessage mQueryResponse = null;
 
             private Dictionary<string, Command> mCommands = new();
 
@@ -174,10 +181,12 @@ namespace LukeBot
                             string[] cmdTokens = cmd.Command.Split(' ');
                             if (mCommands.TryGetValue(cmdTokens[0], out Command c))
                             {
-                                // TODO Command.Execute() should not return a string, but rather
-                                // communicate its outcome and such via CLIMessageProxy
-                                // Instead we could return something like a boolean value to
-                                // check if we succeeded or not
+                                if (!c.IsPermitted(mPermissionLevel))
+                                {
+                                    SendObject<CommandResponseServerMessage>(new CommandResponseServerMessage(cmd, ServerCommandStatus.NotPermitted));
+                                    break;
+                                }
+
                                 string result = c.Execute(this, cmdTokens.Skip(1).ToArray());
                                 CommandResponseServerMessage resp = new(cmd, ServerCommandStatus.Success, result);
                                 SendObject<CommandResponseServerMessage>(resp);
@@ -190,6 +199,21 @@ namespace LukeBot
                             LogClientContext(LogLevel.Debug, "Processing Command message done");
                             break;
                         }
+                        case ServerMessageType.QueryResponse:
+                        {
+                            QueryResponseServerMessage r = msg as QueryResponseServerMessage;
+                            if (mSentQuery == null || mQueryResponse != null ||
+                                mQueryResponse.MsgID != mSentQuery.MsgID)
+                            {
+                                LogClientContext(LogLevel.Warning, "Received query response for a different query than asked - should not happen");
+                                break;
+                            }
+
+                            mQueryResponse = r;
+                            mQueryResponseEvent.Set();
+                            LogClientContext(LogLevel.Debug, "Processed Query response");
+                            break;
+                        }
                         default:
                             LogClientContext(LogLevel.Debug, "Received message of type {0}", msg.Type.ToString());
                             break;
@@ -200,7 +224,7 @@ namespace LukeBot
                         LogClientContext(LogLevel.Debug, "Connection interrupted");
                         mRecvThreadDone = true;
                     }
-                    catch (Exception e)
+                    catch (System.Exception e)
                     {
                         LogClientContext(LogLevel.Error, "Caught exception: {0}", e.Message);
                         LogClientContext(LogLevel.Trace, "Stack trace:\n{0}", e.StackTrace);
@@ -218,22 +242,24 @@ namespace LukeBot
                 mRecvThread.Start();
             }
 
-            public void ElevatePermissionLevel(UserPermissionLevel level)
+            public void FetchPermissionLevel()
             {
-                mPermissionLevel = level;
+                Path permissionLevelPath = Path.Start()
+                    .Push(Constants.PROP_STORE_USER_DOMAIN)
+                    .Push(mCurrentUser)
+                    .Push(UserContext.PROP_STORE_ACCOUNT_DOMAIN)
+                    .Push(UserContext.PROP_STORE_PERMISSION_LEVEL);
+
+                if (!Conf.TryGet<UserPermissionLevel>(permissionLevelPath, out mPermissionLevel))
+                {
+                    // no permission level set, assume no permissions
+                    mPermissionLevel = UserPermissionLevel.None;
+                }
             }
 
-            public void SelectCommands(Dictionary<string, Command> commands)
+            public void SetCommands(Dictionary<string, Command> commands)
             {
-                // we iterate over all Commands that are available and pick the ones that we
-                // can add, based on users' permission level
-                foreach (KeyValuePair<string, Command> it in commands)
-                {
-                    if (it.Value.PermissionLevel <= mPermissionLevel)
-                    {
-                        mCommands.Add(it.Key, it.Value);
-                    }
-                }
+                mCommands = commands;
             }
 
             public void ForceDisconnect()
@@ -258,18 +284,51 @@ namespace LukeBot
                 SendObject<NotifyServerMessage>(m);
             }
 
+            private QueryResponseServerMessage QueryInternal(QueryServerMessage m)
+            {
+                mSentQuery = m;
+                SendObject<QueryServerMessage>(m);
+                if (!mQueryResponseEvent.WaitOne(60 * 1000))
+                {
+                    LogClientContext(LogLevel.Warning, "Timed out waiting for query response");
+                    mSentQuery = null;
+                    mQueryResponse = null;
+
+                    throw new TimeoutException("Timed out waiting for query response");
+                }
+
+                QueryResponseServerMessage r = mQueryResponse;
+                mSentQuery = null;
+                mQueryResponse = null;
+                return r;
+            }
+
             public bool Ask(string msg)
             {
-                NotifyServerMessage m = new(mSessionData, "Incoming question (not implemented yet): " + msg);
-                SendObject<NotifyServerMessage>(m);
-                return false;
+                QueryServerMessage m = new(mSessionData, msg, true, false);
+                QueryResponseServerMessage r = QueryInternal(m);
+
+                if (!r.IsYesNo)
+                {
+                    LogClientContext(LogLevel.Warning, "Received invalid query response from client");
+                    return false;
+                }
+
+                return (r.Response == "y");
             }
 
             public string Query(bool maskAnswer, string msg)
             {
-                NotifyServerMessage m = new(mSessionData, "Incoming query (not implemented yet): " + msg);
-                SendObject<NotifyServerMessage>(m);
-                return "";
+                QueryServerMessage m = new(mSessionData, msg, false, maskAnswer);
+                QueryResponseServerMessage r = QueryInternal(m);
+
+                if (r.IsYesNo)
+                {
+                    LogClientContext(LogLevel.Warning, "Received invalid query response from client");
+                    return "";
+                }
+
+                return r.Response;
             }
 
             public string GetCurrentUser()
@@ -286,6 +345,11 @@ namespace LukeBot
 
                 CurrentUserChangeServerMessage m = new(mSessionData, username);
                 SendObject<CurrentUserChangeServerMessage>(m);
+            }
+
+            public void RefreshUserData()
+            {
+                FetchPermissionLevel();
             }
         }
 
@@ -373,8 +437,8 @@ namespace LukeBot
 
             // give proper permission level and select allowed commands from the pool
             context.SetCurrentUser(loginMsg.User);
-            context.ElevatePermissionLevel(permLevel);
-            context.SelectCommands(mCommands);
+            context.RefreshUserData();
+            context.SetCommands(mCommands);
 
             mClients.Add(context.mUsername, context);
 

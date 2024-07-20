@@ -21,11 +21,11 @@ namespace LukeBot
     {
         public string Username { get; private set; }
 
-        private const string PROP_STORE_MODULES_DOMAIN = "modules";
-        private const string PROP_STORE_WIDGETS_DOMAIN = "widgets";
-        private const string PROP_STORE_ACCOUNT_DOMAIN = "account";
-        private const string PROP_STORE_PASSWORD = "password";
-        private const string PROP_STORE_PERMISSION_LEVEL = "permission";
+        public const string PROP_STORE_MODULES_DOMAIN = "modules";
+        public const string PROP_STORE_WIDGETS_DOMAIN = "widgets";
+        public const string PROP_STORE_ACCOUNT_DOMAIN = "account";
+        public const string PROP_STORE_PASSWORD = "password";
+        public const string PROP_STORE_PERMISSION_LEVEL = "permission";
 
         private Dictionary<ModuleType, IUserModule> mModules = new();
         private object mLock = new();
@@ -83,14 +83,11 @@ namespace LukeBot
 
             if (!Conf.TryGet<UserPermissionLevel>(permissionLevelPath, out mPermissionLevel))
             {
-                // no password, issue a warning
-                Logger.Log().Warning("User " + Username + " has no permission level set");
+                // no permission level set, assume no permissions
                 mPermissionLevel = UserPermissionLevel.None;
             }
-            else
-            {
-                Logger.Log().Secure("User " + Username + " permission level: {0}", mPermissionLevel);
-            }
+
+            Logger.Log().Secure("User " + Username + " permission level: {0}", mPermissionLevel);
         }
 
         // module-config management

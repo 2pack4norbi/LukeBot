@@ -2,6 +2,8 @@ namespace LukeBot
 {
     /**
      * Allows CLI parts to send messages back to currently active CLI.
+     *
+     * TODO maybe rename to CLIConnectionContext?
      */
     internal interface CLIMessageProxy
     {
@@ -46,5 +48,12 @@ namespace LukeBot
          * Note that this action should only be done by Admin accounts.
          */
         void SetCurrentUser(string username);
+
+        /**
+         * Triggers a user data refresh.
+         *
+         * This should be called when user data has been modified by ex. "user update" call.
+         */
+        void RefreshUserData();
     }
 }

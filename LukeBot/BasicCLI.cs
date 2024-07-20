@@ -214,6 +214,11 @@ namespace LukeBot
             mPromptPrefix = username;
         }
 
+        public void RefreshUserData()
+        {
+            // noop on BasicCLI
+        }
+
         public void MainLoop()
         {
             try

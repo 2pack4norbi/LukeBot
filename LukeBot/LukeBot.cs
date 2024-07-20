@@ -19,6 +19,7 @@ namespace LukeBot
         private List<ICLIProcessor> mCommandProcessors = new List<ICLIProcessor>{
             new EventCLIProcessor(),
             new ModuleCLIProcessor(),
+            new TestCLIProcessor(),
             new UserCLIProcessor(),
 
             // module CLI commands

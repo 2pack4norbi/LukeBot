@@ -179,5 +179,37 @@ namespace LukeBot.Common
             Console.Write('\n');
             return line;
         }
+
+        /**
+         * Splits JSONs from a single string into a list of strings.
+         *
+         * This is useful for handling ex. all communication routines where multiple messages
+         * might be sent in quick succession and received "at once" into single string.
+         */
+        public static List<string> SplitJSONs(string message)
+        {
+            List<string> messages = new();
+
+            int parenCounter = 0;
+            int from = 0;
+            for (int i = 0; i < message.Length; ++i)
+            {
+                if (message[i] == '{') parenCounter++;
+                else if (message[i] == '}') parenCounter--;
+
+                if (parenCounter == 0)
+                {
+                    messages.Add(message.Substring(from, i + 1 - from));
+                    from = i + 1;
+                }
+            }
+
+            if (parenCounter != 0)
+            {
+                return null;
+            }
+
+            return messages;
+        }
     }
 }

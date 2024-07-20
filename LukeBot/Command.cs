@@ -9,6 +9,11 @@ namespace LukeBot
             PermissionLevel = permissionLevel;
         }
 
+        public bool IsPermitted(UserPermissionLevel userLevel)
+        {
+            return userLevel >= PermissionLevel;
+        }
+
         public abstract string Execute(CLIMessageProxy cliProxy, string[] args);
     }
 }

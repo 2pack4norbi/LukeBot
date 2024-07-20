@@ -56,7 +56,21 @@ namespace LukeBot.Tests.Common
         [TestMethod]
         public void Utils_ConvertArgStringsToTuples_ParseErrorTest()
         {
+            Assert.IsTrue(false, "This test must be implemented!");
+        }
 
+        [TestMethod]
+        public void Utils_SplitJSONs()
+        {
+            string testJSON1 = "{\"this_json\"=10,\"is_simple\"=\"haha\"}";
+            string testJSON2 = "{\"test\"=10,\"inner\"={\"test\"=\"haha\"}}";
+
+            string fullmsg = testJSON1 + testJSON2;
+
+            List<string> result = Utils.SplitJSONs(fullmsg);
+
+            Assert.AreEqual(testJSON1, result[0]);
+            Assert.AreEqual(testJSON2, result[1]);
         }
     }
 }

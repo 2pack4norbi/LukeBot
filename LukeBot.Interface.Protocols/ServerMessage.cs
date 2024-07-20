@@ -167,24 +167,27 @@ namespace LukeBot.Interface.Protocols
     {
         public string Query { get; set; }
         public bool IsYesNo { get; set; }
+        public bool MaskAnswer { get; set; }
 
         public QueryServerMessage()
             : base(ServerMessageType.Query, null, "")
         {
             Query = "";
             IsYesNo = false;
+            MaskAnswer = false;
         }
 
-        public QueryServerMessage(SessionData session, string q, bool yn)
+        public QueryServerMessage(SessionData session, string q, bool yn, bool mask)
             : base(ServerMessageType.Query, session)
         {
             Query = q;
             IsYesNo = yn;
+            MaskAnswer = mask;
         }
 
         public override string ToString()
         {
-            return base.ToString() + "; Query: " + Query + "; YesNo: " + IsYesNo;
+            return base.ToString() + "; Query: " + Query + "; YesNo: " + IsYesNo + "; MaskAnswer: " + MaskAnswer;
         }
     }
 

@@ -191,11 +191,12 @@ namespace LukeBot
                 else
                     user = mLukeBot.GetUser(args.Name);
 
-                if (args.PermissionLevel != UserPermissionLevel.None)
-                {
-                    user.SetPermissionLevel(args.PermissionLevel);
-                    mCLI.Message("Permission level set to " + args.PermissionLevel.ToString());
-                }
+                user.SetPermissionLevel(args.PermissionLevel);
+
+                if (user.Username == mCLI.GetCurrentUser())
+                    mCLI.RefreshUserData();
+
+                mCLI.Message("Permission level set to " + args.PermissionLevel.ToString());
 
                 msg = "Changes to user " + user.Username + " applied.";
             }
