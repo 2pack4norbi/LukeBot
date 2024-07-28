@@ -215,7 +215,8 @@ namespace LukeBot
                 mCLI = cliProxy;
 
                 string result = "";
-                Parser.Default.ParseArguments<UserAddCommand, UserListCommand, UserRemoveCommand, UserSwitchCommand, UserPasswordCommand, UserUpdateCommand>(args)
+                Parser p = new Parser(with => with.HelpWriter = new CLIUtils.CLIMessageProxyTextWriter(cliProxy));
+                p.ParseArguments<UserAddCommand, UserListCommand, UserRemoveCommand, UserSwitchCommand, UserPasswordCommand, UserUpdateCommand>(args)
                     .WithParsed<UserAddCommand>((UserAddCommand args) => HandleAddUserCommand(args, out result))
                     .WithParsed<UserListCommand>((UserListCommand args) => HandleListUsersCommand(args, out result))
                     .WithParsed<UserRemoveCommand>((UserRemoveCommand args) => HandleRemoveUserCommand(args, out result))

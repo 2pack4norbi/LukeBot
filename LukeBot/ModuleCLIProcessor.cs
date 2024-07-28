@@ -91,7 +91,8 @@ namespace LukeBot
             UserInterface.CLI.AddCommand(COMMAND_NAME, UserPermissionLevel.User, (CLIMessageProxy cliProxy, string[] args) =>
             {
                 string result = "";
-                Parser.Default.ParseArguments<ModuleListCommand, ModuleEnableCommand, ModuleDisableCommand>(args)
+                Parser p = new Parser(with => with.HelpWriter = new CLIUtils.CLIMessageProxyTextWriter(cliProxy));
+                p.ParseArguments<ModuleListCommand, ModuleEnableCommand, ModuleDisableCommand>(args)
                     .WithParsed<ModuleListCommand>((ModuleListCommand args) => HandleListCommand(args, cliProxy, out result))
                     .WithParsed<ModuleEnableCommand>((ModuleEnableCommand args) => HandleEnableCommand(args, cliProxy, out result))
                     .WithParsed<ModuleDisableCommand>((ModuleDisableCommand args) => HandleDisableCommand(args, cliProxy, out result))

@@ -251,7 +251,8 @@ namespace LukeBot
         public string Parse(CLIMessageProxy CLI, string[] args)
         {
             string result = "";
-            Parser.Default.ParseArguments<TwitchAddCommand, TwitchDeleteCommand, TwitchEditCommand,
+            Parser p = new Parser(with => with.HelpWriter = new CLIUtils.CLIMessageProxyTextWriter(CLI));
+            p.ParseArguments<TwitchAddCommand, TwitchDeleteCommand, TwitchEditCommand,
                     TwitchListCommand, TwitchModifyCommand>(args)
                 .WithParsed<TwitchAddCommand>((TwitchAddCommand arg) => HandleAddcom(arg, CLI, out result))
                 .WithParsed<TwitchDeleteCommand>((TwitchDeleteCommand arg) => HandleDelcom(arg, CLI, out result))

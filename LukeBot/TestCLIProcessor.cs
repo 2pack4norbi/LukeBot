@@ -60,7 +60,8 @@ namespace LukeBot
             UserInterface.CLI.AddCommand("test", UserPermissionLevel.Admin, (CLIMessageProxy cliProxy, string[] args) =>
             {
                 string result = "";
-                Parser.Default.ParseArguments<TestMessageSubverb, TestAskSubverb, TestQuerySubverb>(args)
+                Parser p = new Parser(with => with.HelpWriter = new CLIUtils.CLIMessageProxyTextWriter(cliProxy));
+                p.ParseArguments<TestMessageSubverb, TestAskSubverb, TestQuerySubverb>(args)
                     .WithParsed<TestMessageSubverb>((TestMessageSubverb arg) => HandleMessageSubverb(arg, cliProxy, out result))
                     .WithParsed<TestAskSubverb>((TestAskSubverb arg) => HandleAskSubverb(arg, cliProxy, out result))
                     .WithParsed<TestQuerySubverb>((TestQuerySubverb arg) => HandleQuerySubverb(arg, cliProxy, out result))

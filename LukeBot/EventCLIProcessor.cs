@@ -264,7 +264,8 @@ namespace LukeBot
             {
                 string result = "";
 
-                Parser.Default.ParseArguments<EventTestCommand, EventInfoCommand, EventStatusCommand, EventClearCommand, EventEnableCommand, EventDisableCommand, EventHoldCommand, EventSkipCommand>(args)
+                Parser p = new Parser(with => with.HelpWriter = new CLIUtils.CLIMessageProxyTextWriter(cliProxy));
+                p.ParseArguments<EventTestCommand, EventInfoCommand, EventStatusCommand, EventClearCommand, EventEnableCommand, EventDisableCommand, EventHoldCommand, EventSkipCommand>(args)
                     .WithParsed<EventTestCommand>((EventTestCommand args) => HandleTestCommand(args, cliProxy, out result))
                     .WithParsed<EventInfoCommand>((EventInfoCommand args) => HandleInfoCommand(args, cliProxy, out result))
                     .WithParsed<EventStatusCommand>((EventStatusCommand args) => HandleStatusCommand(args, cliProxy, out result))
