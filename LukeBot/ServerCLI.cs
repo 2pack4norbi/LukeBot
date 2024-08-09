@@ -24,10 +24,12 @@ namespace LukeBot
 
             private const int COOKIE_SIZE = 32;
             private const int PING_TIMER_THRESHOLD = 120 * 1000; // 2 minutes = 120 seconds in miliseconds
+            private const int REPLAY_PREVENT_WAIT_TIME = 3 * 1000; // 3 seconds in miliseconds
 
             public string mUsername = "";
             public string mCookie = ""; // full ID of this connection context
             public SessionData mSessionData = null;
+            private IUserManager mUserManager = null;
             private UserPermissionLevel mPermissionLevel = UserPermissionLevel.None;
             private OnClientDoneDelegate mClientDoneDelegate = null;
 
@@ -47,7 +49,7 @@ namespace LukeBot
             private QueryServerMessage mSentQuery = null; // to validate received message
             private QueryResponseServerMessage mQueryResponse = null;
 
-            private Dictionary<string, Command> mCommands = new();
+            private Dictionary<string, Command> mCommands = null;
 
             private void OnTimer(object source, ElapsedEventArgs args)
             {
@@ -61,6 +63,17 @@ namespace LukeBot
                 Logger.Log().Message(level, mLogPreamble + msg, args);
             }
 
+            private bool ValidateLoginMessage(LoginServerMessage msg)
+            {
+                return
+                    msg != null && // message cannot be null
+                    msg.Type == ServerMessageType.Login && // message must be of Login type
+                    msg.Session == null && // message cannot have Session information
+                    Guid.TryParse(msg.MsgID, out Guid result) == true && // MsgID must be a valid GUID
+                    msg.User != null && msg.User.Length > 0 && // message should have any user information
+                    msg.PasswordHashBase64 != null && msg.PasswordHashBase64.Length > 0; // message should have password information
+            }
+
             private bool ValidateMessage(ServerMessage msg)
             {
                 return
@@ -70,13 +83,15 @@ namespace LukeBot
                     msg.Type != ServerMessageType.Login; // Login messages are not accepted at this point
             }
 
-            public ClientContext(TcpClient client, OnClientDoneDelegate clientDoneDelegate)
+            public ClientContext(TcpClient client, IUserManager userManager, Dictionary<string, Command> commands, OnClientDoneDelegate clientDoneDelegate)
             {
                 mClient = client;
                 mStream = mClient.GetStream();
                 mStream.ReadTimeout = 125 * 1000; // 2 minutes
+                mUserManager = userManager;
                 mPermissionLevel = UserPermissionLevel.None;
                 mClientDoneDelegate = clientDoneDelegate;
+                mCommands = commands;
 
                 RandomNumberGenerator rng = RandomNumberGenerator.Create();
                 byte[] cookieBuffer = new byte[COOKIE_SIZE];
@@ -130,111 +145,156 @@ namespace LukeBot
                 Send(JsonConvert.SerializeObject(obj));
             }
 
-            private void ReceiveThreadMain()
+            private void MainLoop()
             {
-                LogClientContext(LogLevel.Info, "Connected");
-                mPingTimer.Start();
-
                 while (!mRecvThreadDone)
                 {
-                    try
+                    ServerMessage msg = ReceiveObject<ServerMessage>();
+                    LogClientContext(LogLevel.Info, "Mesage: {0}", msg.Type.ToString());
+                    if (!ValidateMessage(msg))
                     {
-                        ServerMessage msg = ReceiveObject<ServerMessage>();
-                        LogClientContext(LogLevel.Info, "Mesage: {0}", msg.Type.ToString());
-                        if (!ValidateMessage(msg))
+                        // cut the connection, something was not correct
+                        LogClientContext(LogLevel.Error, "Got invalid message - disconnecting");
+                        mRecvThreadDone = true;
+                        break;
+                    }
+
+                    switch (msg.Type)
+                    {
+                    case ServerMessageType.Logout:
+                        LogClientContext(LogLevel.Info, "Logout message received - disconnecting");
+                        mRecvThreadDone = true;
+                        break;
+                    case ServerMessageType.PingResponse:
+                        if (mCurrentPingChallenge == "")
                         {
-                            // cut the connection, something was not correct
-                            LogClientContext(LogLevel.Error, "Got invalid message - disconnecting");
+                            LogClientContext(LogLevel.Error, "Received ping response with no challenge in progress - dropping connection");
                             mRecvThreadDone = true;
-                            break;
                         }
 
-                        switch (msg.Type)
+                        LogClientContext(LogLevel.Debug, "Received ping response");
+                        PingResponseServerMessage pingMsg = msg as PingResponseServerMessage;
+                        if (pingMsg.Test != mCurrentPingChallenge)
                         {
-                        case ServerMessageType.Logout:
-                            LogClientContext(LogLevel.Info, "Logout message received - disconnecting");
+                            LogClientContext(LogLevel.Error, "Ping challenge failed - disconnecting");
+                            LogClientContext(LogLevel.Debug, "Ping challenge expected {0}, got {1}", mCurrentPingChallenge, pingMsg.Test);
                             mRecvThreadDone = true;
-                            break;
-                        case ServerMessageType.PingResponse:
-                            if (mCurrentPingChallenge == "")
-                            {
-                                LogClientContext(LogLevel.Error, "Received ping response with no challenge in progress - dropping connection");
-                                mRecvThreadDone = true;
-                            }
-
-                            LogClientContext(LogLevel.Debug, "Received ping response");
-                            PingResponseServerMessage pingMsg = msg as PingResponseServerMessage;
-                            if (pingMsg.Test != mCurrentPingChallenge)
-                            {
-                                LogClientContext(LogLevel.Error, "Ping challenge failed - disconnecting");
-                                LogClientContext(LogLevel.Debug, "Ping challenge expected {0}, got {1}", mCurrentPingChallenge, pingMsg.Test);
-                                mRecvThreadDone = true;
-                            }
-
-                            LogClientContext(LogLevel.Debug, "Ping challenge successful");
-                            mCurrentPingChallenge = "";
-                            mPingTimer.Start();
-                            break;
-                        case ServerMessageType.Command:
-                        {
-                            CommandServerMessage cmd = msg as CommandServerMessage;
-                            string[] cmdTokens = cmd.Command.Split(' ');
-                            if (mCommands.TryGetValue(cmdTokens[0], out Command c))
-                            {
-                                if (!c.IsPermitted(mPermissionLevel))
-                                {
-                                    SendObject<CommandResponseServerMessage>(new CommandResponseServerMessage(cmd, ServerCommandStatus.NotPermitted));
-                                    break;
-                                }
-
-                                string result = c.Execute(this, cmdTokens.Skip(1).ToArray());
-                                CommandResponseServerMessage resp = new(cmd, ServerCommandStatus.Success, result);
-                                SendObject<CommandResponseServerMessage>(resp);
-                            }
-                            else
-                            {
-                                CommandResponseServerMessage resp = new(cmd, ServerCommandStatus.UnknownCommand, "");
-                                SendObject<CommandResponseServerMessage>(resp);
-                            }
-                            LogClientContext(LogLevel.Debug, "Processing Command message done");
-                            break;
                         }
-                        case ServerMessageType.QueryResponse:
+
+                        LogClientContext(LogLevel.Debug, "Ping challenge successful");
+                        mCurrentPingChallenge = "";
+                        mPingTimer.Start();
+                        break;
+                    case ServerMessageType.Command:
+                    {
+                        CommandServerMessage cmd = msg as CommandServerMessage;
+                        string[] cmdTokens = cmd.Command.Split(' ');
+                        if (mCommands.TryGetValue(cmdTokens[0], out Command c))
                         {
-                            QueryResponseServerMessage r = msg as QueryResponseServerMessage;
-                            if (mSentQuery == null || mQueryResponse != null ||
-                                mQueryResponse.MsgID != mSentQuery.MsgID)
+                            if (!c.IsPermitted(mPermissionLevel))
                             {
-                                LogClientContext(LogLevel.Warning, "Received query response for a different query than asked - should not happen");
+                                SendObject<CommandResponseServerMessage>(new CommandResponseServerMessage(cmd, ServerCommandStatus.NotPermitted));
                                 break;
                             }
 
-                            mQueryResponse = r;
-                            mQueryResponseEvent.Set();
-                            LogClientContext(LogLevel.Debug, "Processed Query response");
+                            string retMsg = c.Execute(this, cmdTokens.Skip(1).ToArray());
+                            CommandResponseServerMessage resp = new(cmd, ServerCommandStatus.Success, retMsg);
+                            SendObject<CommandResponseServerMessage>(resp);
+                        }
+                        else
+                        {
+                            CommandResponseServerMessage resp = new(cmd, ServerCommandStatus.UnknownCommand, "");
+                            SendObject<CommandResponseServerMessage>(resp);
+                        }
+                        LogClientContext(LogLevel.Debug, "Processing Command message done");
+                        break;
+                    }
+                    case ServerMessageType.QueryResponse:
+                    {
+                        QueryResponseServerMessage r = msg as QueryResponseServerMessage;
+                        if (mSentQuery == null || mQueryResponse != null ||
+                            mQueryResponse.MsgID != mSentQuery.MsgID)
+                        {
+                            LogClientContext(LogLevel.Warning, "Received query response for a different query than asked - should not happen");
                             break;
                         }
-                        default:
-                            LogClientContext(LogLevel.Debug, "Received message of type {0}", msg.Type.ToString());
-                            break;
-                        }
+
+                        mQueryResponse = r;
+                        mQueryResponseEvent.Set();
+                        LogClientContext(LogLevel.Debug, "Processed Query response");
+                        break;
                     }
-                    catch (System.IO.IOException)
+                    default:
+                        LogClientContext(LogLevel.Debug, "Received message of type {0}", msg.Type.ToString());
+                        break;
+                    }
+                }
+            }
+
+            private void ReceiveThreadMain()
+            {
+                try
+                {
+                    // At first ClientContext is created with no permission level, which grants
+                    // no access to any LukeBot commands.
+                    // Technically it doesn't matter (not yet on the main loop of the thread and expecting
+                    // an exact sequence of messages), but it puts an extra layer of protection.
+                    LoginServerMessage loginMsg = ReceiveObject<LoginServerMessage>();
+                    LogClientContext(LogLevel.Secure, "Received login message: {0}", loginMsg.ToString());
+                    if (!ValidateLoginMessage(loginMsg))
                     {
-                        LogClientContext(LogLevel.Debug, "Connection interrupted");
-                        mRecvThreadDone = true;
+                        throw new ClientContextException("Malformed login message received");
                     }
-                    catch (System.Exception e)
+
+                    // let the username be known
+                    mUsername = loginMsg.User;
+
+                    byte[] pwdBuf = Convert.FromBase64String(loginMsg.PasswordHashBase64);
+                    UserPermissionLevel permLevel = mUserManager.AuthenticateUser(loginMsg.User, pwdBuf, out string reason);
+                    if (permLevel == UserPermissionLevel.None)
                     {
-                        LogClientContext(LogLevel.Error, "Caught exception: {0}", e.Message);
-                        LogClientContext(LogLevel.Trace, "Stack trace:\n{0}", e.StackTrace);
-                        mRecvThreadDone = true;
+                        // wait a few seconds to prevent replay attacks
+                        Thread.Sleep(REPLAY_PREVENT_WAIT_TIME);
+
+                        // send back message and leave
+                        SendObject<LoginResponseServerMessage>(
+                            new LoginResponseServerMessage(loginMsg, reason)
+                        );
+
+                        throw new ClientContextException("Login failed for user {0} - {1}", loginMsg.User, reason);
                     }
+
+                    // send back confirmation that all is well
+                    SendObject<LoginResponseServerMessage>(
+                        new LoginResponseServerMessage(loginMsg, mSessionData)
+                    );
+
+                    // inform client which user is logged in (current one)
+                    SetCurrentUser(mUsername);
+                    RefreshUserData();
+
+                    LogClientContext(LogLevel.Info, "Connected");
+                    mPingTimer.Start();
+
+                    MainLoop();
+                }
+                catch (ClientContextException e)
+                {
+                    LogClientContext(LogLevel.Error, "ClientContext raised internal exception: " + e.Message);
+                }
+                catch (System.IO.IOException)
+                {
+                    LogClientContext(LogLevel.Error, "Connection interrupted.");
+                }
+                catch (System.Exception e)
+                {
+                    LogClientContext(LogLevel.Error, "Caught exception: {0}", e.Message);
+                    LogClientContext(LogLevel.Trace, "Stack trace:\n{0}", e.StackTrace);
                 }
 
                 mStream.Close();
                 mClient.Close();
-                mClientDoneDelegate(mUsername);
+                mClientDoneDelegate(mCookie);
             }
 
             public void StartThread()
@@ -255,11 +315,6 @@ namespace LukeBot
                     // no permission level set, assume no permissions
                     mPermissionLevel = UserPermissionLevel.None;
                 }
-            }
-
-            public void SetCommands(Dictionary<string, Command> commands)
-            {
-                mCommands = commands;
             }
 
             public void ForceDisconnect()
@@ -370,12 +425,12 @@ namespace LukeBot
         private string mAddress;
         private int mPort;
 
-        public void OnClientRecvThreadDone(string username)
+        public void OnClientRecvThreadDone(string cookie)
         {
             mInterruptMutex.WaitOne();
 
             mInterruptReason = InterruptReason.ClientToClear;
-            mClientsToClear.Enqueue(username);
+            mClientsToClear.Enqueue(cookie);
             mServer.Stop();
 
             mInterruptMutex.ReleaseMutex();
@@ -386,61 +441,9 @@ namespace LukeBot
             // this blocks until a new connection comes in
             TcpClient client = mServer.AcceptTcpClient();
 
-            // At first ClientContext is created with no permission level, which grants
-            // no access to any LukeBot commands.
-            // Technically it doesn't matter (no commands on ClientContext's side yet, plus
-            // Receive Thread is not yet running), but it puts an extra layer of protection
-            // in case we need to change the above.
-            ClientContext context = new(client, OnClientRecvThreadDone);
-
-            LoginServerMessage loginMsg = context.ReceiveObject<LoginServerMessage>();
-            Logger.Log().Secure("Received login message: {0}", loginMsg.ToString());
-            if (loginMsg.Type != ServerMessageType.Login ||
-                loginMsg.Session != null ||
-                Guid.TryParse(loginMsg.MsgID, out Guid result) == false ||
-                loginMsg.User == null ||
-                loginMsg.PasswordHashBase64 == null)
-            {
-                Logger.Log().Error("Malformed login message received");
-                client.Close();
-                return;
-            }
-
-            if (mClients.ContainsKey(loginMsg.User))
-            {
-                Logger.Log().Error("Attempted login at already logged in user");
-                context.SendObject<LoginResponseServerMessage>(
-                    new LoginResponseServerMessage(loginMsg, "Already logged in")
-                );
-                client.Close();
-                return;
-            }
-
-            context.mUsername = loginMsg.User;
-
-            byte[] pwdBuf = Convert.FromBase64String(loginMsg.PasswordHashBase64);
-            UserPermissionLevel permLevel = mUserManager.AuthenticateUser(loginMsg.User, pwdBuf, out string reason);
-            if (permLevel == UserPermissionLevel.None)
-            {
-                Logger.Log().Error("Login failed for user {0} - {1}", loginMsg.User, reason);
-                context.SendObject<LoginResponseServerMessage>(
-                    new LoginResponseServerMessage(loginMsg, reason)
-                );
-                client.Close();
-                return;
-            }
-
-            // send back confirmation that all is well
-            context.SendObject<LoginResponseServerMessage>(
-                new LoginResponseServerMessage(loginMsg, context.mSessionData)
-            );
-
-            // give proper permission level and select allowed commands from the pool
-            context.SetCurrentUser(loginMsg.User);
-            context.RefreshUserData();
-            context.SetCommands(mCommands);
-
-            mClients.Add(context.mUsername, context);
+            // Create a new context and start it. It will carry on with the initial conversation.
+            ClientContext context = new(client, mUserManager, mCommands, OnClientRecvThreadDone);
+            mClients.Add(context.mCookie, context);
 
             context.StartThread();
         }
@@ -452,10 +455,11 @@ namespace LukeBot
             while (mClientsToClear.Count > 0)
             {
                 string client = mClientsToClear.Dequeue();
-                Logger.Log().Debug("Clearing {0}", client);
+                string clientShort = client.Substring(0, 8);
+                Logger.Log().Debug("Clearing {0}", clientShort);
                 mClients[client].WaitForShutdown();
                 mClients.Remove(client);
-                Logger.Log().Debug("{0} cleared", client);
+                Logger.Log().Debug("{0} cleared", clientShort);
             }
 
             mInterruptReason = InterruptReason.Unknown;

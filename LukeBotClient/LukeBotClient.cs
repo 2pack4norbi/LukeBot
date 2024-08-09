@@ -262,9 +262,6 @@ namespace LukeBotClient
                 LoginResponseServerMessage response = await ReceiveObject<LoginResponseServerMessage>();
                 if (response.Type == ServerMessageType.None || !response.Success)
                 {
-                    // prevents/discourages bruteforcing
-                    Thread.Sleep(3000);
-
                     tries++;
                     if (tries >= 3)
                         throw new SystemException("Failed to login: " + response.Error);
