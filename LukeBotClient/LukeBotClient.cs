@@ -47,7 +47,7 @@ namespace LukeBotClient
         {
             mPrintMutex.WaitOne();
 
-            Console.Write('\r' + text);
+            Console.Write("\x1b[2K\r" + text);
 
             mPrintMutex.ReleaseMutex();
         }
