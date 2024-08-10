@@ -65,8 +65,9 @@ namespace LukeBot.API
             {
                 token.Refresh();
 
-                // recreate HttpClient to avoid re-send protection triggering
+                // recreate HttpClient and form a new message to avoid re-send protection triggering
                 client = new HttpClient();
+                message = FormRequestMessage(method, uri, token, uriQuery, content);
 
                 responseTask = client.SendAsync(message);
                 responseTask.Wait(RESPONSE_WAIT_TIMEOUT);
