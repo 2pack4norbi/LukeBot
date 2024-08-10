@@ -98,12 +98,12 @@ namespace LukeBot
 
         void HandleListUsersCommand(UserListCommand args, out string msg)
         {
-            msg = "Available users:";
+            msg = "Available users:\n";
 
             List<string> usernames = mLukeBot.GetUsernames();
             foreach (string u in usernames)
             {
-                msg += "\n  " + u;
+                msg += "  " + u + " (" + mLukeBot.GetUser(u).GetPermissionLevel().ToString() + ")\n";
             }
         }
 
@@ -145,7 +145,7 @@ namespace LukeBot
 
             try
             {
-                msg = "Selected user " + mCLI.GetCurrentUser();
+                msg = "Switched to user " + mCLI.GetCurrentUser();
             }
             catch (NoUserSelectedException)
             {
