@@ -73,7 +73,7 @@ namespace LukeBot.Endpoint
                 }
             }
 
-            Intermediary srv = Comms.Communication.GetIntermediary(service);
+            Intermediary srv = Comms.Intermediary.GetIntermediary(service);
 
             if (!context.Request.Query.ContainsKey("state"))
             {

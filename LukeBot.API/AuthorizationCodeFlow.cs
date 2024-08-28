@@ -48,10 +48,9 @@ namespace LukeBot.API
 
             Logger.Log().Debug("Notifying comms manager");
             PromiseData userResponseBase = new UserToken();
-            IntermediaryPromise userPromise = Comms.Communication.GetIntermediary(mService).Expect(state, ref userResponseBase);
+            IntermediaryPromise userPromise = Comms.Intermediary.GetIntermediary(mService).Expect(state, ref userResponseBase);
 
             Logger.Log().Debug("Opening browser window with query {0}", URL);
-            Utils.StartBrowser(URL);
 
             // wait for 5 minutes
             if (!userPromise.Wait(5 * 60 * 1000))

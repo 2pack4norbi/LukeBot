@@ -4,11 +4,11 @@ using System.Collections.Generic;
 
 namespace LukeBot.Communication
 {
-    public sealed class CommunicationSystem
+    public sealed class IntermediarySystem
     {
         private Dictionary<string, Intermediary> mServices = new Dictionary<string, Intermediary>();
 
-        public CommunicationSystem()
+        public IntermediarySystem()
         {
         }
 

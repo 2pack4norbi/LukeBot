@@ -174,7 +174,7 @@ namespace LukeBot.Twitch
 
         public TwitchMainModule()
         {
-            Comms.Communication.Register(CommonConstants.TWITCH_MODULE_NAME);
+            Comms.Intermediary.Register(CommonConstants.TWITCH_MODULE_NAME);
 
             mBotLogin = Conf.Get<string>(Path.Start()
                 .Push(CommonConstants.TWITCH_MODULE_NAME)

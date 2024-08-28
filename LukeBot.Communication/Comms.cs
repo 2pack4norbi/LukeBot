@@ -2,16 +2,16 @@
 {
     public class Comms
     {
-        static private CommunicationSystem mCommunicationSystem;
+        static private IntermediarySystem mIntermediarySystem;
         static private EventSystem mEventSystem;
         static private IntercomSystem mIntercomSystem;
         static private bool mInitialized;
 
-        static public CommunicationSystem Communication
+        static public IntermediarySystem Intermediary
         {
             get
             {
-                return mCommunicationSystem;
+                return mIntermediarySystem;
             }
         }
 
@@ -47,13 +47,13 @@
             mEventSystem = new EventSystem();
             mIntercomSystem = new IntercomSystem();
 
-            mCommunicationSystem = new CommunicationSystem();
+            mIntermediarySystem = new IntermediarySystem();
             mInitialized = true;
         }
 
         static public void Teardown()
         {
-            mCommunicationSystem = null;
+            mIntermediarySystem = null;
 
             mIntercomSystem = null;
             mEventSystem = null;

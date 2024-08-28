@@ -84,7 +84,7 @@ namespace LukeBot.Spotify
 
         public SpotifyMainModule()
         {
-            Comms.Communication.Register(CommonConstants.SPOTIFY_MODULE_NAME);
+            Comms.Intermediary.Register(CommonConstants.SPOTIFY_MODULE_NAME);
 
             EndpointInfo epInfo = new EndpointInfo(Endpoints.SPOTIFY_MAIN_MODULE, Intercom_ResponseAllocator);
             epInfo.AddMessage(Messages.ADD_SONG_TO_QUEUE, Intercom_AddSongToQueueDelegate);
