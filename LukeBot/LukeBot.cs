@@ -4,6 +4,7 @@ using LukeBot.Config;
 using LukeBot.Logging;
 using LukeBot.Globals;
 using LukeBot.Communication;
+using LukeBot.Communication.Common;
 using System.Collections.Generic;
 using System;
 using System.Linq;
@@ -76,12 +77,17 @@ namespace LukeBot
             return true;
         }
 
+        public void OpenBrowserURLCallback(object o, EventArgsBase args)
+        {
+            // hooks up to AuthManager's OpenBrowserURL
+            API.OpenBrowserURLArgs a = args as API.OpenBrowserURLArgs;
+            UserInterface.CLI.OpenBrowserURL(a.LukeBotUser, a.URL);
+        }
+
 
         void LoadUsers()
         {
-            Path usersProp = Path.Start()
-                .Push(Constants.LUKEBOT_USER_ID)
-                .Push(Constants.PROP_STORE_USERS_PROP);
+            Path usersProp = Common.Constants.PROP_STORE_USERS_PROP;
 
             if (!Conf.Exists(usersProp))
             {
@@ -123,11 +129,7 @@ namespace LukeBot
 
         void AddUserToConfig(string name)
         {
-            Path propName = Path.Start()
-                .Push(Constants.LUKEBOT_USER_ID)
-                .Push(Constants.PROP_STORE_USERS_PROP);
-
-            ConfUtil.ArrayAppend(propName, name);
+            ConfUtil.ArrayAppend(Common.Constants.PROP_STORE_USERS_PROP, name);
         }
 
         void RemoveUserFromConfig(string name)
@@ -137,11 +139,7 @@ namespace LukeBot
                 throw new ArgumentException("User " + name + " does not exist.");
             }
 
-            Path propName = Path.Start()
-                .Push(Constants.LUKEBOT_USER_ID)
-                .Push(Constants.PROP_STORE_USERS_PROP);
-
-            ConfUtil.ArrayRemove(propName, name);
+            ConfUtil.ArrayRemove(Common.Constants.PROP_STORE_USERS_PROP, name);
 
             // also clear entire branch of user-related settings
             Path userConfDomain = Path.Start()
@@ -252,19 +250,24 @@ namespace LukeBot
                 Logger.Log().Info("Initializing Core Comms...");
                 Comms.Initialize();
 
+                // TODO hacky??? maybe it could be done better
+                API.AuthManager i = API.AuthManager.Instance; // triggers constructor and initializes belw event's endpoint
+                Comms.Event.Global().Event(API.Events.AUTHMGR_OPEN_BROWSER).Endpoint += OpenBrowserURLCallback;
+
                 Logger.Log().Info("Starting web endpoint...");
                 Endpoint.Endpoint.StartThread();
 
                 Logger.Log().Info("Initializing Global Modules...");
                 GlobalModules.Initialize();
 
-                GlobalModules.Run();
-
                 InterfaceType uiType = opts.CLI;
                 Logger.Log().Info("Initializing UI {0}...", uiType.ToString());
                 UserInterface.Initialize(uiType, this);
 
                 LoadUsers();
+
+                Logger.Log().Info("Running Global modules...");
+                GlobalModules.Run();
 
                 Logger.Log().Info("Giving control to UI");
                 AddCLICommands();

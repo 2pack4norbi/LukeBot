@@ -19,9 +19,12 @@ public class DefaultStoreTemplate: StoreTemplate
     // Most have to be edited by user, but listing them gives a general idea what to provide.
     public override void Fill(PropertyStore store)
     {
-        store.Add(LukeBot.Config.Path.Parse("lukebot.server_ip"), Property.Create<string>("127.0.0.1"));
-        store.Add(LukeBot.Config.Path.Parse("lukebot.users"), Property.Create<string[]>(new string[] { "admin" }));
-        store.Add(LukeBot.Config.Path.Parse("lukebot.reconnect_count"), Property.Create<int>(10));
+        store.Add(LukeBot.Common.Constants.PROP_STORE_SERVER_IP_PROP, Property.Create<string>(LukeBot.Common.Constants.DEFAULT_SERVER_IP));
+        store.Add(LukeBot.Common.Constants.PROP_STORE_USE_HTTPS_PROP, Property.Create<string>("false"));
+        store.Add(LukeBot.Common.Constants.PROP_STORE_HTTPS_DOMAIN_PROP, Property.Create<string>("my.domain.org"));
+        store.Add(LukeBot.Common.Constants.PROP_STORE_HTTPS_EMAIL_PROP, Property.Create<string>("my@email.com"));
+        store.Add(LukeBot.Common.Constants.PROP_STORE_USERS_PROP, Property.Create<string[]>(new string[] {}));
+        store.Add(LukeBot.Common.Constants.PROP_STORE_RECONNECT_COUNT_PROP, Property.Create<int>(10));
 
         store.Add(LukeBot.Config.Path.Parse("twitch.api_endpoint"), Property.Create<string>(Twitch.DEFAULT_API_URI));
         store.Add(LukeBot.Config.Path.Parse("twitch.login"), Property.Create<string>(LukeBot.Common.Constants.DEFAULT_LOGIN_NAME));

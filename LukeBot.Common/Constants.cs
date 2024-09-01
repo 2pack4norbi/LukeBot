@@ -7,15 +7,23 @@ namespace LukeBot.Common
         public const string LUKEBOT_USER_ID = "lukebot";
 
         public const string PROP_STORE_SERVER_IP_PROP_NAME = "server_ip";
+        public const string PROP_STORE_USE_HTTPS_PROP_NAME = "use_https";
+        public const string PROP_STORE_HTTPS_DOMAIN_PROP_NAME = "https_domain";
+        public const string PROP_STORE_HTTPS_EMAIL_PROP_NAME = "https_email";
         public const string PROP_STORE_USER_DOMAIN = "user";
-        public const string PROP_STORE_USERS_PROP = "users";
+        public const string PROP_STORE_USERS_PROP_NAME = "users";
         public const string PROP_STORE_TOKEN_PROP = "token";
         public const string PROP_STORE_LOGIN_PROP = "login";
-        public const string PROP_STORE_RECONNECT_COUNT_PROP = "reconnect_count";
-        public static readonly Path PROP_STORE_SERVER_IP_PROP = Path.Form(LUKEBOT_USER_ID, PROP_STORE_SERVER_IP_PROP_NAME);
+        public const string PROP_STORE_RECONNECT_COUNT_PROP_NAME = "reconnect_count";
 
-        public const string SERVER_IP_FILE = "server_ip";
-        public const string DEFAULT_SERVER_IP = "127.0.0.1";
+        public static readonly Path PROP_STORE_SERVER_IP_PROP = Path.Form(LUKEBOT_USER_ID, PROP_STORE_SERVER_IP_PROP_NAME);
+        public static readonly Path PROP_STORE_USE_HTTPS_PROP = Path.Form(LUKEBOT_USER_ID, PROP_STORE_USE_HTTPS_PROP_NAME);
+        public static readonly Path PROP_STORE_HTTPS_DOMAIN_PROP = Path.Form(LUKEBOT_USER_ID, PROP_STORE_HTTPS_DOMAIN_PROP_NAME);
+        public static readonly Path PROP_STORE_HTTPS_EMAIL_PROP = Path.Form(LUKEBOT_USER_ID, PROP_STORE_HTTPS_EMAIL_PROP_NAME);
+        public static readonly Path PROP_STORE_USERS_PROP = Path.Form(LUKEBOT_USER_ID, PROP_STORE_USERS_PROP_NAME);
+        public static readonly Path PROP_STORE_RECONNECT_COUNT_PROP = Path.Form(LUKEBOT_USER_ID, PROP_STORE_RECONNECT_COUNT_PROP_NAME);
+
+        public const string DEFAULT_SERVER_IP = "localhost:5000";
         public const string PROPERTY_STORE_FILE = "Data/props.lukebot";
         public const string DEFAULT_LOGIN_NAME = "SET_BOT_LOGIN_HERE";
         public const string DEFAULT_CLIENT_ID_NAME = "SET_YOUR_CLIENT_ID_HERE";

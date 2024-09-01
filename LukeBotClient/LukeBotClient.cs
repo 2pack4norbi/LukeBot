@@ -202,6 +202,21 @@ namespace LukeBotClient
                         PrintLine("Logged in as " + m.NewUser);
                     break;
                 }
+                case ServerMessageType.OpenBrowserURL:
+                {
+                    OpenBrowserURLServerMessage m = msg as OpenBrowserURLServerMessage;
+                    try
+                    {
+                        PrintLine("Opening browser...");
+                        LukeBot.Common.Utils.StartBrowser(m.URL);
+                    }
+                    catch (System.Exception e)
+                    {
+                        PrintLine("Failed to open browser: " + e.Message);
+                        PrintLine(string.Format("Open following URL manually: {0}", m.URL));
+                    }
+                    break;
+                }
                 case ServerMessageType.CommandResponse:
                 {
                     CommandResponseServerMessage m = msg as CommandResponseServerMessage;

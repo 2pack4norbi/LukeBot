@@ -8,5 +8,6 @@
         void Teardown();
         void AddCommand(string cmd, Command c);
         void AddCommand(string cmd, UserPermissionLevel permissionLevel, CmdDelegate d);
+        void OpenBrowserURL(string lbUser, string URL);
     }
 }

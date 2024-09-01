@@ -16,7 +16,7 @@ namespace LukeBot.API
     {
         private readonly HttpClient mHttpClient = new HttpClient();
 
-        public override AuthToken Request(string scope)
+        public override AuthToken Request(string lbUser, string scope)
         {
             Logger.Log().Info("Requesting OAuth token...");
             Dictionary<string, string> query = new Dictionary<string, string>();

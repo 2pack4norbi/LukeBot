@@ -3,6 +3,7 @@ using LukeBot.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using CommandLine;
 
 
@@ -31,8 +32,12 @@ namespace LukeBot
         static void Main(string[] args)
         {
             FileUtils.SetUnifiedCWD();
-            Console.InputEncoding = System.Text.Encoding.Unicode;
-            Console.OutputEncoding = System.Text.Encoding.Unicode;
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                Console.InputEncoding = System.Text.Encoding.Unicode;
+                Console.OutputEncoding = System.Text.Encoding.Unicode;
+            }
 
             Logger.SetProjectRootDir(Directory.GetCurrentDirectory());
 

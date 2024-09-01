@@ -6,6 +6,7 @@ using System.Threading;
 using LukeBot.Logging;
 using LukeBot.Config;
 using System.IO;
+using Microsoft.AspNetCore.Server.Kestrel.Https;
 
 
 namespace LukeBot.Endpoint
@@ -60,9 +61,12 @@ namespace LukeBot.Endpoint
             });
 
             string IP = Conf.Get<string>(Common.Constants.PROP_STORE_SERVER_IP_PROP);
+            bool useHTTPS = Conf.Get<bool>(Common.Constants.PROP_STORE_USE_HTTPS_PROP);
+
             if (IP != Common.Constants.DEFAULT_SERVER_IP)
             {
                 string[] URLs;
+                string protocol = "http";
                 if (IP.Contains("localhost"))
                 {
                     URLs = new string[]
@@ -72,16 +76,16 @@ namespace LukeBot.Endpoint
                 }
                 else
                 {
+                    if (useHTTPS)
+                        protocol = "https";
+
                     URLs = new string[]
                     {
-                        // TODO readd below with certificates
-                        //"https://" + IP + "/",
-                        "http://" + IP + "/",
-                        //"https://localhost:5001/",
-                        "http://localhost:5000/",
+                        protocol + "://" + IP + "/",
+                        "http://localhost:5000/"
                     };
                 }
-                Logger.Log().Debug("Using host IP " + IP);
+                Logger.Log().Debug("Using host address " + protocol + "://" + IP);
                 builder.UseUrls(URLs);
             }
 

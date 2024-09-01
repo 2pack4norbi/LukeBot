@@ -49,6 +49,7 @@ namespace LukeBot.Interface.Protocols
             case ServerMessageType.Query: msg = obj.ToObject<QueryServerMessage>(); break;
             case ServerMessageType.PasswordChange: msg = obj.ToObject<PasswordChangeServerMessage>(); break;
             case ServerMessageType.CurrentUserChange: msg = obj.ToObject<CurrentUserChangeServerMessage>(); break;
+            case ServerMessageType.OpenBrowserURL: msg = obj.ToObject<OpenBrowserURLServerMessage>(); break;
             case ServerMessageType.Logout: msg = obj.ToObject<LogoutServerMessage>(); break;
             case ServerMessageType.LoginResponse: msg = obj.ToObject<LoginResponseServerMessage>(); break;
             case ServerMessageType.PingResponse: msg = obj.ToObject<PingResponseServerMessage>(); break;

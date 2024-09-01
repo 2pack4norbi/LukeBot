@@ -89,19 +89,19 @@ namespace LukeBot.Twitch
 
             events.Add(new EventDescriptor()
             {
-                Name = Events.TWITCH_CHAT_MESSAGE,
+                Name = Twitch.Common.Events.TWITCH_CHAT_MESSAGE,
                 Description = "Twitch Chat message event. Emitted when any Twitch user sends a chat message.",
                 Dispatcher = null
             });
             events.Add(new EventDescriptor()
             {
-                Name = Events.TWITCH_CHAT_CLEAR_MESSAGE,
+                Name = Twitch.Common.Events.TWITCH_CHAT_CLEAR_MESSAGE,
                 Description = "Twitch Chat Clear Message event. Emitted when a chat message is removed from the chat window.",
                 Dispatcher = null
             });
             events.Add(new EventDescriptor()
             {
-                Name = Events.TWITCH_CHAT_CLEAR_USER,
+                Name = Twitch.Common.Events.TWITCH_CHAT_CLEAR_USER,
                 Description = "Twitch Chat Clear User event. Emitted when user's messages are removed from chat window (ie. because user is timed out).",
                 Dispatcher = null
             });
@@ -127,13 +127,13 @@ namespace LukeBot.Twitch
             {
                 switch (e.eventName)
                 {
-                case Events.TWITCH_CHAT_MESSAGE:
+                case Twitch.Common.Events.TWITCH_CHAT_MESSAGE:
                     mMessageEventCallback = e;
                     break;
-                case Events.TWITCH_CHAT_CLEAR_MESSAGE:
+                case Twitch.Common.Events.TWITCH_CHAT_CLEAR_MESSAGE:
                     mMessageClearEventCallback = e;
                     break;
-                case Events.TWITCH_CHAT_CLEAR_USER:
+                case Twitch.Common.Events.TWITCH_CHAT_CLEAR_USER:
                     mUserClearEventCallback = e;
                     break;
                 default:

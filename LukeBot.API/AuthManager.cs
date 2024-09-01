@@ -2,13 +2,33 @@
 using System.Threading;
 using System.Collections.Generic;
 using LukeBot.Common;
+using LukeBot.Communication;
 using LukeBot.Config;
 using LukeBot.Logging;
+using LukeBot.Communication.Common;
 
 
 namespace LukeBot.API
 {
-    public class AuthManager
+    public class Events
+    {
+        public const string AUTHMGR_OPEN_BROWSER = "AuthmgrOpenBrowser";
+    }
+
+    public class OpenBrowserURLArgs: EventArgsBase
+    {
+        public string LukeBotUser { get; set; }
+        public string URL { get; set; }
+
+        public OpenBrowserURLArgs(string lbUser, string url)
+            : base(Events.AUTHMGR_OPEN_BROWSER)
+        {
+            LukeBotUser = lbUser;
+            URL = url;
+        }
+    }
+
+    public class AuthManager: IEventPublisher
     {
         private static readonly Lazy<AuthManager> mInstance =
             new Lazy<AuthManager>(() => new AuthManager());
@@ -16,6 +36,7 @@ namespace LukeBot.API
 
         Dictionary<Path, Token> mTokens = new();
         Mutex mMutex = new();
+        EventCallback mOpenBrowserURLDelegate;
 
         private Token NewTokenForService(ServiceType service, string lbUser)
         {
@@ -39,6 +60,27 @@ namespace LukeBot.API
 
         private AuthManager()
         {
+            List<EventCallback> callbacks = Comms.Event.Global().RegisterPublisher(this);
+            mOpenBrowserURLDelegate = callbacks[0];
+        }
+
+        public string GetName()
+        {
+            return "AuthManager";
+        }
+
+        public List<EventDescriptor> GetEvents()
+        {
+            List<EventDescriptor> events = new();
+
+            events.Add(new EventDescriptor()
+            {
+                Name = Events.AUTHMGR_OPEN_BROWSER,
+                Description = "Internal - requests to open a browser window for AuthMgr.",
+                Dispatcher = null
+            });
+
+            return events;
         }
 
 
@@ -73,6 +115,12 @@ namespace LukeBot.API
             }
 
             mMutex.ReleaseMutex();
+        }
+
+        internal void OpenBrowserURL(string lbUser, string URL)
+        {
+            OpenBrowserURLArgs a = new(lbUser, URL);
+            mOpenBrowserURLDelegate.PublishEvent(a);
         }
     }
 }

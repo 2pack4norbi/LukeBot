@@ -18,6 +18,7 @@ namespace LukeBot.API
         private Config.Path mTokenPath = null;
         private AuthToken mToken = null;
         private Mutex mMutex = null;
+        private string mLBUser = null;
 
         // Check if token is valid. This can be false when Token is either
         // not loaded, or loaded but past its expiration period.
@@ -93,6 +94,8 @@ namespace LukeBot.API
                 ImportFromConfig();
                 Loaded = true;
             }
+
+            mLBUser = lbUser;
         }
 
         ~Token()
@@ -129,7 +132,7 @@ namespace LukeBot.API
                 return ret;
             }
 
-            mToken = mFlow.Request(scope);
+            mToken = mFlow.Request(mLBUser, scope);
             ExportToConfig();
             Loaded = true;
 

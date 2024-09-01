@@ -406,6 +406,12 @@ namespace LukeBot
             {
                 FetchPermissionLevel();
             }
+
+            public void SendOpenBrowserURL(string URL)
+            {
+                OpenBrowserURLServerMessage msg = new(mSessionData, URL);
+                SendObject<OpenBrowserURLServerMessage>(msg);
+            }
         }
 
         private enum InterruptReason
@@ -417,6 +423,7 @@ namespace LukeBot
 
         private Dictionary<string, Command> mCommands = new();
         private Dictionary<string, ClientContext> mClients = new();
+        private Dictionary<string, List<string>> mUserToClientCookie = new();
         private InterruptReason mInterruptReason = InterruptReason.Unknown;
         private Queue<string> mClientsToClear = new();
         private Mutex mInterruptMutex = new();
@@ -445,6 +452,13 @@ namespace LukeBot
             ClientContext context = new(client, mUserManager, mCommands, OnClientRecvThreadDone);
             mClients.Add(context.mCookie, context);
 
+            if (!mUserToClientCookie.ContainsKey(context.mUsername))
+            {
+                mUserToClientCookie.Add(context.mUsername, new());
+            }
+
+            mUserToClientCookie[context.mUsername].Add(context.mCookie);
+
             context.StartThread();
         }
 
@@ -456,9 +470,13 @@ namespace LukeBot
             {
                 string client = mClientsToClear.Dequeue();
                 string clientShort = client.Substring(0, 8);
+
                 Logger.Log().Debug("Clearing {0}", clientShort);
+                string username = mClients[client].mUsername;
                 mClients[client].WaitForShutdown();
                 mClients.Remove(client);
+                mUserToClientCookie[username].Remove(client);
+
                 Logger.Log().Debug("{0} cleared", clientShort);
             }
 
@@ -505,6 +523,20 @@ namespace LukeBot
         public void AddCommand(string cmd, UserPermissionLevel permissionLevel, CLIBase.CmdDelegate d)
         {
             AddCommand(cmd, new LambdaCommand(permissionLevel, d));
+        }
+
+        public void OpenBrowserURL(string lbUser, string URL)
+        {
+            try
+            {
+                string cookie = mUserToClientCookie[lbUser].Last();
+                mClients[cookie].SendOpenBrowserURL(URL);
+            }
+            catch (System.Exception e)
+            {
+                Logger.Log().Error("Failed to send open browser request to user {0}: {1}", lbUser, e.Message);
+                Logger.Log().Error("  Try opening following URL manually: {0}", URL);
+            }
         }
 
         public void MainLoop()

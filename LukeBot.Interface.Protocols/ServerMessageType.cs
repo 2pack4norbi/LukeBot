@@ -12,6 +12,7 @@ namespace LukeBot.Interface.Protocols
         Query,
         PasswordChange,
         CurrentUserChange,
+        OpenBrowserURL,
         Logout,
 
         NoneResponse = 0x8000,

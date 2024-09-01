@@ -8,10 +8,11 @@ using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Text.Json;
-using LukeBot.Common;
-using LukeBot.Logging;
 using LukeBot.API;
+using LukeBot.Common;
 using LukeBot.Communication;
+using LukeBot.Config;
+using LukeBot.Logging;
 using Intercom = LukeBot.Communication.Common.Intercom;
 using LukeBot.Widget.Common;
 using Microsoft.Extensions.FileProviders;
@@ -182,6 +183,20 @@ namespace LukeBot.Endpoint
 
         public void ConfigureServices(IServiceCollection services)
         {
+            bool useHTTPS = Conf.Get<bool>(Common.Constants.PROP_STORE_USE_HTTPS_PROP);
+
+            if (useHTTPS)
+            {
+                string domain = Conf.Get<string>(Common.Constants.PROP_STORE_HTTPS_DOMAIN_PROP);
+                string email = Conf.Get<string>(Common.Constants.PROP_STORE_HTTPS_EMAIL_PROP);
+
+                services.AddLettuceEncrypt(c =>
+                {
+                    c.AcceptTermsOfService = true;
+                    c.DomainNames = new string[] { domain };
+                    c.EmailAddress = email;
+                });
+            }
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
@@ -190,6 +205,10 @@ namespace LukeBot.Endpoint
             {
                 app.UseDeveloperExceptionPage();
             }
+
+            bool useHTTPS = Conf.Get<bool>(Common.Constants.PROP_STORE_USE_HTTPS_PROP);
+            if (useHTTPS)
+                app.UseHttpsRedirection();
 
             app.UseWebSockets();
             app.UseRouting();

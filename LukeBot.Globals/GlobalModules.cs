@@ -75,11 +75,11 @@ namespace LukeBot.Globals
 
         static public void Stop()
         {
-            mTwitchMainModule.RequestShutdown();
-            mWidgetMainModule.RequestShutdown();
+            if (mTwitchMainModule != null) mTwitchMainModule.RequestShutdown();
+            if (mWidgetMainModule != null) mWidgetMainModule.RequestShutdown();
 
-            mTwitchMainModule.WaitForShutdown();
-            mWidgetMainModule.WaitForShutdown();
+            if (mTwitchMainModule != null) mTwitchMainModule.WaitForShutdown();
+            if (mWidgetMainModule != null) mWidgetMainModule.WaitForShutdown();
         }
 
         static public void Teardown()

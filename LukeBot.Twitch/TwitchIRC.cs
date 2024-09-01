@@ -233,12 +233,8 @@ namespace LukeBot.Twitch
             int reconnectCount = Constants.RECONNECT_ATTEMPTS;
             bool successful = false;
 
-            Config.Path reconnectCountProp = Config.Path.Start()
-                .Push(CommonConstants.LUKEBOT_USER_ID)
-                .Push(CommonConstants.PROP_STORE_RECONNECT_COUNT_PROP);
-
             int reconnectCountConf = 0;
-            if (Conf.TryGet(reconnectCountProp, out reconnectCountConf))
+            if (Conf.TryGet(CommonConstants.PROP_STORE_RECONNECT_COUNT_PROP, out reconnectCountConf))
             {
                 Logger.Log().Debug("Custom reconnect count set in config: {0}", reconnectCountConf);
                 reconnectCount = reconnectCountConf;

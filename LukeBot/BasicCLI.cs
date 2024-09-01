@@ -145,6 +145,12 @@ namespace LukeBot
             AddCommand(cmd, new LambdaCommand(permissionLevel, d));
         }
 
+        public void OpenBrowserURL(string lbUser, string URL)
+        {
+            // lbUser ignored, basic is only used in single-user scenarios
+            Common.Utils.StartBrowser(URL);
+        }
+
         // To be used inside CLI commands to query user for a yes/no choice
         public void Message(string message)
         {

@@ -21,7 +21,7 @@ namespace LukeBot.Twitch
         private Token mToken;
         private TwitchIRC mIRC;
         private API.Twitch.GetUserResponse mBotData;
-        private Dictionary<string, TwitchUserModule> mUsers;
+        private Dictionary<string, TwitchUserModule> mUsers = new();
 
 
         // Config interactions //
@@ -185,22 +185,6 @@ namespace LukeBot.Twitch
             {
                 throw new PropertyFileInvalidException("Bot's Twitch login has not been provided in Property Store");
             }
-
-            string tokenScope = "chat:read chat:edit user:read:email"; // TODO should also be from Config...
-            mToken = AuthManager.Instance.GetToken(ServiceType.Twitch, mBotLogin);
-
-            bool tokenFromFile = mToken.Loaded;
-            if (!mToken.Loaded)
-                mToken.Request(tokenScope);
-
-            if (!Utils.IsLoginSuccessful(mToken))
-            {
-                throw new InvalidOperationException("Failed to login to Twitch");
-            }
-
-            mBotData = API.Twitch.GetUser(mToken);
-            mIRC = new TwitchIRC(mBotLogin, mToken);
-            mUsers = new Dictionary<string, TwitchUserModule>();
 
             Intercom::EndpointInfo epInfo = new Intercom::EndpointInfo(Endpoints.TWITCH_MAIN_MODULE);
             epInfo.AddMessage(Messages.ADD_COMMAND, IntercomAddCommandDelegate);
@@ -372,6 +356,20 @@ namespace LukeBot.Twitch
 
         public void Run()
         {
+            string tokenScope = "chat:read chat:edit user:read:email"; // TODO should also be from Config...
+            mToken = AuthManager.Instance.GetToken(ServiceType.Twitch, mBotLogin);
+
+            bool tokenFromFile = mToken.Loaded;
+            if (!mToken.Loaded)
+                mToken.Request(tokenScope);
+
+            if (!Utils.IsLoginSuccessful(mToken))
+            {
+                throw new InvalidOperationException("Failed to login to Twitch");
+            }
+
+            mBotData = API.Twitch.GetUser(mToken);
+            mIRC = new TwitchIRC(mBotLogin, mToken);
             mIRC.Run();
         }
 

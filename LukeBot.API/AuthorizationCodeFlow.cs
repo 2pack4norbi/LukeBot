@@ -16,7 +16,7 @@ namespace LukeBot.API
         private readonly HttpClient mClient = new HttpClient();
         private string mCallbackURL = null;
 
-        public override AuthToken Request(string scope)
+        public override AuthToken Request(string lbUser, string scope)
         {
             //
             // Step 1: Acquire user token
@@ -50,7 +50,10 @@ namespace LukeBot.API
             PromiseData userResponseBase = new UserToken();
             IntermediaryPromise userPromise = Comms.Intermediary.GetIntermediary(mService).Expect(state, ref userResponseBase);
 
-            Logger.Log().Debug("Opening browser window with query {0}", URL);
+            // This is emitted to whoever is willing to listen. If there is noone (ex. running in
+            // server mode with no GUI) we hope it will be handled properly regardless.
+            Logger.Log().Debug("Opening browser window for user {0} with query {1}", lbUser, URL);
+            AuthManager.Instance.OpenBrowserURL(lbUser, URL);
 
             // wait for 5 minutes
             if (!userPromise.Wait(5 * 60 * 1000))

@@ -264,6 +264,32 @@ namespace LukeBot.Interface.Protocols
         }
     }
 
+    // Sent from Server to Client when there is a need to open the Browser with an URL.
+    // Example (and probably the most common) situation is when API.AuthManager needs to
+    // open a login page to a 3rd party provider to authenticate user.
+    public class OpenBrowserURLServerMessage: ServerMessage
+    {
+        public string URL { get; set; }
+
+        public OpenBrowserURLServerMessage()
+            : base(ServerMessageType.OpenBrowserURL, null, "")
+        {
+            URL = "";
+        }
+
+        public OpenBrowserURLServerMessage(SessionData session, string url)
+            : base(ServerMessageType.OpenBrowserURL, session)
+        {
+            URL = url;
+        }
+
+        public override string ToString()
+        {
+            return base.ToString() + "; URL: " + URL;
+        }
+    }
+
+    // Sent from Client to Server when logging out
     public class LogoutServerMessage: ServerMessage
     {
         public LogoutServerMessage()

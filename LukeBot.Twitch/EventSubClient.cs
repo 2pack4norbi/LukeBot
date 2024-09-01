@@ -218,7 +218,7 @@ namespace LukeBot.Twitch
 
             events.Add(new EventDescriptor()
             {
-                Name = Events.TWITCH_CHANNEL_POINTS_REDEMPTION,
+                Name = Twitch.Common.Events.TWITCH_CHANNEL_POINTS_REDEMPTION,
                 Description = "Twitch Channel Points reward redemption. Generated when Twitch user redeems a specified Channel Points reward.",
                 Dispatcher = Constants.QueuedDispatcherForUser(mLBUser),
                 TestGenerator = GenerateTestChannelPointEvent,
@@ -235,7 +235,7 @@ namespace LukeBot.Twitch
             });
             events.Add(new EventDescriptor()
             {
-                Name = Events.TWITCH_CHEER,
+                Name = Twitch.Common.Events.TWITCH_CHEER,
                 Description = "Twitch bits Cheer. Generated when Twitch user cheers some bits on a channel.",
                 Dispatcher = Constants.QueuedDispatcherForUser(mLBUser),
                 TestGenerator = GenerateTestCheerEvent,
@@ -249,7 +249,7 @@ namespace LukeBot.Twitch
             });
             events.Add(new EventDescriptor()
             {
-                Name = Events.TWITCH_SUBSCRIPTION,
+                Name = Twitch.Common.Events.TWITCH_SUBSCRIPTION,
                 Description = "Twitch channel subscription. Generated when Twitch user subscribes, resubscribes or gifts a subscription in the channel.",
                 Dispatcher = Constants.QueuedDispatcherForUser(mLBUser),
                 TestGenerator = GenerateTestSubscriptionEvent,
@@ -281,13 +281,13 @@ namespace LukeBot.Twitch
             {
                 switch (e.eventName)
                 {
-                case Events.TWITCH_CHANNEL_POINTS_REDEMPTION:
+                case Twitch.Common.Events.TWITCH_CHANNEL_POINTS_REDEMPTION:
                     mChannelPointsRedemptionCallback = e;
                     break;
-                case Events.TWITCH_CHEER:
+                case Twitch.Common.Events.TWITCH_CHEER:
                     mCheerCallback = e;
                     break;
-                case Events.TWITCH_SUBSCRIPTION:
+                case Twitch.Common.Events.TWITCH_SUBSCRIPTION:
                     mSubscriptionCallback = e;
                     break;
                 default:

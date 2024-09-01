@@ -50,7 +50,7 @@ namespace LukeBot.API
             }
         }
 
-        public abstract AuthToken Request(string scope);
+        public abstract AuthToken Request(string lbUser, string scope);
         public abstract AuthToken Refresh(AuthToken token);
         public abstract void Revoke(AuthToken token);
     }
