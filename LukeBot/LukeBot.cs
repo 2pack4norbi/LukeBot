@@ -226,7 +226,7 @@ namespace LukeBot
         {
             lock (mUsersLock)
             {
-                return (username.Length == 0) || mUsers.ContainsKey(username);
+                return username.Length != 0 && mUsers.ContainsKey(username);
             }
         }
 

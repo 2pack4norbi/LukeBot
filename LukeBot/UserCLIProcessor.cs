@@ -117,8 +117,15 @@ namespace LukeBot
 
             try
             {
-                if (mCLI.GetCurrentUser() == args.Name)
-                    mCLI.SetCurrentUser("");
+                try
+                {
+                    if (mCLI.GetCurrentUser() == args.Name)
+                        mCLI.SetCurrentUser("");
+                }
+                catch (NoUserSelectedException)
+                {
+                    // noop
+                }
 
                 mLukeBot.RemoveUser(args.Name);
                 msg = "User " + args.Name + " removed.";
@@ -133,23 +140,24 @@ namespace LukeBot
         {
             try
             {
-                if (!mLukeBot.IsUsernameValid(args.Name))
+                bool hasUsername = (args.Name != null && args.Name.Length > 0);
+                if (hasUsername && !mLukeBot.IsUsernameValid(args.Name))
                     throw new System.ArgumentException("Unknown/invalid username.");
 
                 mCLI.SetCurrentUser(args.Name);
+
+                try
+                {
+                    msg = "Switched to user " + mCLI.GetCurrentUser();
+                }
+                catch (NoUserSelectedException)
+                {
+                    msg = "Cleared current user";
+                }
             }
             catch (System.Exception e)
             {
-                msg = "Failed to select user " + args.Name + ": " + e.Message;
-            }
-
-            try
-            {
-                msg = "Switched to user " + mCLI.GetCurrentUser();
-            }
-            catch (NoUserSelectedException)
-            {
-                msg = "Cleared selected user";
+                msg = "Failed to switch to user " + args.Name + ": " + e.Message;
             }
         }
 
@@ -158,7 +166,8 @@ namespace LukeBot
             try
             {
                 UserContext user;
-                if (args.Name == null || args.Name.Length == 0)
+                bool currentUser = (args.Name == null || args.Name.Length == 0);
+                if (currentUser)
                     user = mLukeBot.GetUser(mCLI.GetCurrentUser());
                 else
                     user = mLukeBot.GetUser(args.Name);
@@ -186,14 +195,15 @@ namespace LukeBot
             try
             {
                 UserContext user;
-                if (args.Name == null || args.Name.Length == 0)
+                bool currentUser = (args.Name == null || args.Name.Length == 0);
+                if (currentUser)
                     user = mLukeBot.GetUser(mCLI.GetCurrentUser());
                 else
                     user = mLukeBot.GetUser(args.Name);
 
                 user.SetPermissionLevel(args.PermissionLevel);
 
-                if (user.Username == mCLI.GetCurrentUser())
+                if (currentUser)
                     mCLI.RefreshUserData();
 
                 mCLI.Message("Permission level set to " + args.PermissionLevel.ToString());
