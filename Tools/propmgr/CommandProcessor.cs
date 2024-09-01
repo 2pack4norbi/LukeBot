@@ -104,6 +104,30 @@ public class CommandProcessor
         return store;
     }
 
+    private string PrepareType(string inType)
+    {
+        switch (inType)
+        {
+        case "sbyte": return "System.SByte";
+        case "byte": return "System.Byte";
+        case "short": return "System.Int16";
+        case "ushort": return "System.UInt16";
+        case "int": return "System.Int32";
+        case "uint": return "System.UInt32";
+        case "long": return "System.Int64";
+        case "ulong": return "System.UInt64";
+        case "nint": return "System.IntPtr";
+        case "nuint": return "System.UIntPtr";
+        case "float": return "System.Single";
+        case "double": return "System.Double";
+        case "decimal": return "System.Decimal";
+        case "bool": return "System.Boolean";
+        case "char": return "System.Char";
+        case "string": return "System.String";
+        default: return inType; // probably custom type, leave unchanged
+        }
+    }
+
     public void CreatePropertyStore(CreateCommand cmd)
     {
         Logger.Log().Info("Creating Property Store at {0} with template {1}", cmd.StoreDir, cmd.TemplateType);
@@ -148,9 +172,10 @@ public class CommandProcessor
 
     public void AddProperty(AddCommand cmd)
     {
-        Logger.Log().Info("Adding Property {0} {1} to store {2}", cmd.Type, cmd.Name, cmd.StoreDir);
+        string type = PrepareType(cmd.Type);
+        Logger.Log().Info("Adding Property {0} {1} to store {2}", type, cmd.Name, cmd.StoreDir);
         PropertyStore store = OpenStore(cmd);
-        store.Add(LukeBot.Config.Path.Parse(cmd.Name), Property.Create(cmd.Type, cmd.Value));
+        store.Add(LukeBot.Config.Path.Parse(cmd.Name), Property.Create(type, cmd.Value));
         store.Save();
     }
 
