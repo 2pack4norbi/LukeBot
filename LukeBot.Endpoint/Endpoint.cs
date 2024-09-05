@@ -61,7 +61,10 @@ namespace LukeBot.Endpoint
             });
 
             string IP = Conf.Get<string>(Common.Constants.PROP_STORE_SERVER_IP_PROP);
-            bool useHTTPS = Conf.Get<bool>(Common.Constants.PROP_STORE_USE_HTTPS_PROP);
+            bool useHTTPS;
+            if (!Conf.TryGet<bool>(Common.Constants.PROP_STORE_USE_HTTPS_PROP, out useHTTPS)) {
+                useHTTPS = false;
+            }
 
             if (IP != Common.Constants.DEFAULT_SERVER_IP)
             {
