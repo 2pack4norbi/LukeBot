@@ -264,10 +264,10 @@ namespace LukeBot
                 Logger.Log().Info("Initializing UI {0}...", uiType.ToString());
                 UserInterface.Initialize(uiType, this);
 
-                LoadUsers();
-
                 Logger.Log().Info("Running Global modules...");
                 GlobalModules.Run();
+
+                LoadUsers();
 
                 Logger.Log().Info("Giving control to UI");
                 AddCLICommands();
