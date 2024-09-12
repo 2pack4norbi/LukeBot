@@ -59,6 +59,7 @@ namespace LukeBot.Widget
             case WidgetType.nowplaying: return new NowPlaying(mLBUser, id, name);
             case WidgetType.chat: return new Chat(mLBUser, id, name);
             case WidgetType.alerts: return new Alerts(mLBUser, id, name);
+            case WidgetType.audioplay: return new AudioPlay(mLBUser, id, name);
             default:
                 throw new InvalidWidgetTypeException("Invalid widget type: {0}", type);
             }

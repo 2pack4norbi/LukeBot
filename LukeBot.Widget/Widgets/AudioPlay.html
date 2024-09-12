@@ -1,0 +1,144 @@
+﻿<!DOCTYPE html>
+
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans" rel="stylesheet">
+<script src="/js/lukebot-widget-common.js"></script>
+
+<script>
+    class WidgetEventCompletionStatus {
+        constructor(status, reason) {
+            this.Status = status;
+            this.Reason = reason;
+        }
+    }
+
+    // TODO copied from Alerts.html. Should be probably common-ized
+    class AlertChain {
+        constructor(receivedObject) {
+            this.mChain = new Array();
+            this.mCurrent = 0;
+            this.mType = receivedObject.EventName;
+            this.mUsername = receivedObject.User;
+            this.mDisplayName = receivedObject.DisplayName;
+        }
+
+        add(alertEvent) {
+            if (!(alertEvent instanceof AlertBase)) {
+                throw new Error("Cannot add objects not extending AlertBase()");
+            }
+            this.mChain.push(alertEvent);
+        }
+
+        next() {
+            this.mCurrent += 1;
+            if (this.mCurrent < this.mChain.length) {
+                this.mChain[this.mCurrent].execute(this.next.bind(this));
+            }
+        }
+
+        play() {
+            this.mCurrent = 0;
+            this.mChain[this.mCurrent].execute(this.next.bind(this));
+        }
+
+        interrupt() {
+            this.mChain.forEach((value, idx) => {
+                value.interrupt();
+            });
+        }
+    }
+
+    class AlertBase {
+        constructor() {
+            if (this.constructor == AlertBase) {
+                throw new Error("Cannot instantiate base class");
+            }
+        }
+
+        execute(next) {
+            throw new Error("execute() has not been implemented");
+        }
+
+        interrupt() {
+            throw new Error("interrupt() has not been implemented");
+        }
+    }
+
+    class AudioAlert extends AlertBase {
+        constructor(audioPath) {
+            super();
+            if (audioPath)
+                this.setPath(audioPath);
+        }
+
+        setPath(path) {
+            this.mAudioBlobPromise = fetch(path);
+        }
+
+        execute(next) {
+            this.mAudioBlobPromise.then((response) => response.blob())
+                                  .then((blob) => {
+                var audioURL = window.URL.createObjectURL(blob);
+                this.mAudio = new Audio(audioURL);
+                this.mAudio.addEventListener("canplaythrough", (event) => {
+                    this.mAudio.play();
+                    next();
+                });
+                this.mAudio.addEventListener("error", (event) => {
+                    let completionStatus = new WidgetEventCompletionStatus(2, `ERROR playing audio alert: ${audio.error.message}`);
+                    socket.send(JSON.stringify(completionStatus));
+                });
+                this.setupScroll();
+            }).catch((error) => {
+                let completionStatus = new WidgetEventCompletionStatus(2, `ERROR fetching audio file: ${error}`);
+                socket.send(JSON.stringify(completionStatus));
+            });
+        }
+
+        setupScroll() {
+            // noop
+        }
+
+        interrupt() {
+            if (this.mAudio)
+                this.mAudio.pause();
+        }
+    }
+
+    class AlertChainComplete extends AlertBase {
+        constructor() {
+            super();
+            this.mStatus = 0;
+            this.mReason = "OK";
+        }
+
+        execute(next) {
+            audioPlayWidget.send(new WidgetEventCompletionStatus(this.mStatus, this.mReason));
+        }
+
+        interrupt() {
+        }
+    }
+
+    let audioPlayChain = null;
+    let audioPlayWidget = new LukeBotWidget();
+    audioPlayWidget.registerMessage("AlertInterrupt", (obj) => {
+        // interrupt has been triggerred, let's pause the chain and clear it
+        if (audioTrack != null) {
+            audioTrack.stop();
+            audioTrack = null;
+        }
+    });
+    audioPlayWidget.registerMessage("AudioPlayStartPlayback", (obj) => {
+        if (!obj.File) {
+            audioPlayWidget.send(new WidgetEventCompletionStatus(1, `ERROR undefined file to play`));
+        }
+
+        audioPlayChain = new AlertChain(obj);
+        audioPlayChain.add(new AudioAlert(obj.File));
+        audioPlayChain.add(new AlertChainComplete());
+        audioPlayChain.play();
+    });
+    audioPlayWidget.registerMessageError((error) => {
+        audioPlayWidget.send(new WidgetEventCompletionStatus(1, `ERROR exception while preparing/playing audio file: ${error}`));
+    });
+</script>
