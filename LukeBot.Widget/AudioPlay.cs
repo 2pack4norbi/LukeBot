@@ -29,11 +29,16 @@ namespace LukeBot.Widget
         private class AudioPlayStartPlayback: EventArgsBase
         {
             public string File { get; set; }
+            public bool RandomRepeat { get; set; }
+            public int TotalLength { get; set; }
+            public int MinInterval { get; set; }
+            public int MaxInterval { get; set; }
 
             public AudioPlayStartPlayback(string file)
                 : base("AudioPlayStartPlayback")
             {
                 File = file;
+                RandomRepeat = false;
             }
         }
 
@@ -121,9 +126,12 @@ namespace LukeBot.Widget
         private void OnChannelPoints(object o, EventArgsBase args)
         {
             TwitchChannelPointsRedemptionArgs a = args as TwitchChannelPointsRedemptionArgs;
-            if (a == null ||
-                a.Title != "Break the silence") // TODO should be configurable
+            if (a == null)
                 return; // quiet exit, not of our concern
+
+             // TODO should be configurable
+            if (a.Title != "Noise" && a.Title != "One hour noise")
+                return;
 
             // TODO should come from config
             string[] files = [
@@ -136,6 +144,15 @@ namespace LukeBot.Widget
             Random rng = new Random();
             int fileIdx = rng.Next() % files.Length;
             AudioPlayStartPlayback playback = new(files[fileIdx]);
+
+            if (a.Title == "One hour noise")
+            {
+                playback.RandomRepeat = true;
+                playback.TotalLength = 60 * 60;
+                playback.MinInterval = 1 * 60;
+                playback.MaxInterval = 4 * 60;
+            }
+
             SendToWS(playback);
             AwaitEventCompletion();
             // TODO should have its own event for playback stopping?

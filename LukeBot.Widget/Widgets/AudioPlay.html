@@ -87,15 +87,65 @@
                     let completionStatus = new WidgetEventCompletionStatus(2, `ERROR playing audio alert: ${audio.error.message}`);
                     socket.send(JSON.stringify(completionStatus));
                 });
-                this.setupScroll();
             }).catch((error) => {
                 let completionStatus = new WidgetEventCompletionStatus(2, `ERROR fetching audio file: ${error}`);
                 socket.send(JSON.stringify(completionStatus));
             });
         }
 
-        setupScroll() {
-            // noop
+        interrupt() {
+            if (this.mAudio)
+                this.mAudio.pause();
+        }
+    }
+
+    class RandomAudioAlert extends AlertBase {
+        constructor(audioPath, totalLength, minInterval, maxInterval) {
+            super();
+            if (audioPath) {
+                this.setPath(audioPath);
+                this.mTotalLength = totalLength;
+                this.mMinInterval = minInterval;
+                this.mMaxInterval = maxInterval;
+                this.mIntervalLength = maxInterval - minInterval;
+                this.mTotalTime = 0;
+            }
+        }
+
+        setPath(path) {
+            this.mAudioBlobPromise = fetch(path);
+        }
+
+        execute(next) {
+            this.mAudioBlobPromise.then((response) => response.blob())
+                                  .then((blob) => {
+                var audioURL = window.URL.createObjectURL(blob);
+                this.mAudio = new Audio(audioURL);
+                this.mAudio.addEventListener("ended", (event) => {
+                    console.log(`ended, time ${this.mTotalTime} length ${this.mTotalLength}`);
+                    if (this.mTotalTime > this.mTotalLength)
+                        return;
+
+                    var time = Math.random() * this.mIntervalLength;
+                    this.mTotalTime += this.mMinInterval + time;
+                    setTimeout(() => {
+                        console.log("replay");
+                        this.mAudio.currentTime = 0;
+                        this.mAudio.play();
+                    }, (this.mMinInterval + time) * 1000);
+                });
+                this.mAudio.addEventListener("error", (event) => {
+                    let completionStatus = new WidgetEventCompletionStatus(2, `ERROR playing audio alert: ${audio.error.message}`);
+                    socket.send(JSON.stringify(completionStatus));
+                });
+                this.mAudio.addEventListener("canplaythrough", (event) => {
+                    this.mAudio.play();
+                    next();
+                });
+            }).catch((error) => {
+                let completionStatus = new WidgetEventCompletionStatus(2, `ERROR fetching audio file: ${error}`);
+                socket.send(JSON.stringify(completionStatus));
+            });
         }
 
         interrupt() {
@@ -133,8 +183,17 @@
             audioPlayWidget.send(new WidgetEventCompletionStatus(1, `ERROR undefined file to play`));
         }
 
+        console.log(`LKDEBUG start playback of ${obj.File}, repeat ${obj.RandomRepeat}`);
+        if (obj.RandomRepeat == true)
+            console.log(`LKDEBUG repeat for ${obj.TotalLength} between ${obj.MinInterval} and ${obj.MaxInterval} seconds`);
+
         audioPlayChain = new AlertChain(obj);
-        audioPlayChain.add(new AudioAlert(obj.File));
+        if (obj.RandomRepeat == true) {
+            audioPlayChain.add(new RandomAudioAlert(obj.File, obj.TotalLength, obj.MinInterval, obj.MaxInterval));
+        } else {
+            audioPlayChain.add(new AudioAlert(obj.File));
+        }
+
         audioPlayChain.add(new AlertChainComplete());
         audioPlayChain.play();
     });
