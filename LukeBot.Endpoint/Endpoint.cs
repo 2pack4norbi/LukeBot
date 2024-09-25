@@ -2,6 +2,7 @@ using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using LukeBot.Logging;
 using LukeBot.Config;
@@ -61,37 +62,34 @@ namespace LukeBot.Endpoint
             });
 
             string IP = Conf.Get<string>(Common.Constants.PROP_STORE_SERVER_IP_PROP);
-            bool useHTTPS;
-            if (!Conf.TryGet<bool>(Common.Constants.PROP_STORE_USE_HTTPS_PROP, out useHTTPS)) {
-                useHTTPS = false;
-            }
+            string[] URLs;
 
-            if (IP != Common.Constants.DEFAULT_SERVER_IP)
+            if (IP.Contains("localhost"))
             {
-                string[] URLs;
-                string protocol = "http";
-                if (IP.Contains("localhost"))
+                // manually set only localhost
+                // we do this path just in case someone prefers to use different-than-default port 5000
+                URLs = new string[]
                 {
-                    URLs = new string[]
-                    {
-                        "http://" + IP + "/",
-                    };
-                }
-                else
+                    "https://" + IP + "/",
+                };
+            }
+            else
+            {
+                // add defined address + localhost:5000
+                URLs = new string[]
                 {
-                    if (useHTTPS)
-                        protocol = "https";
-
-                    URLs = new string[]
-                    {
-                        protocol + "://" + IP + "/",
-                        "http://localhost:5000/"
-                    };
-                }
-                Logger.Log().Debug("Using host address " + protocol + "://" + IP);
-                builder.UseUrls(URLs);
+                    "https://" + IP + "/",
+                    "https://localhost:5000/"
+                };
             }
 
+            Logger.Log().Debug("Endpoint using host addresses:");
+            foreach (string addr in URLs)
+            {
+                Logger.Log().Debug("  - https://" + IP + "/");
+            }
+
+            builder.UseUrls(URLs);
             builder.UseStartup<Startup>();
             builder.UseContentRoot(Directory.GetCurrentDirectory() + "/Data/ContentRoot");
 

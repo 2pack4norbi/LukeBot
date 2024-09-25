@@ -251,7 +251,7 @@ namespace LukeBot
                 Comms.Initialize();
 
                 // TODO hacky??? maybe it could be done better
-                API.AuthManager i = API.AuthManager.Instance; // triggers constructor and initializes belw event's endpoint
+                API.AuthManager i = API.AuthManager.Instance; // triggers constructor and initializes below event's endpoint
                 Comms.Event.Global().Event(API.Events.AUTHMGR_OPEN_BROWSER).Endpoint += OpenBrowserURLCallback;
 
                 Logger.Log().Info("Starting web endpoint...");

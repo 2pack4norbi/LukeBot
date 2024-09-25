@@ -34,7 +34,9 @@ namespace LukeBot.Widget
                 return; // quiet exit, assume user does not have any widgets
 
             foreach (WidgetDesc wd in widgets)
+            {
                 LoadWidget(wd);
+            }
         }
 
         private void SaveWidgetToConfig(IWidget w)

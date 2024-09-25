@@ -395,8 +395,7 @@
                 this.mAudio.addEventListener("canplaythrough", (event) => {
                     this.mAudio.play().catch(
                         (reason) => {
-                            let completionStatus = new WidgetEventCompletionStatus(2, `ERROR play failed: ${reason}`);
-                            socket.send(JSON.stringify(completionStatus));
+                            alertsWidget.send(new WidgetEventCompletionStatus(2, `ERROR play failed: ${reason}`));
                         }
                     );
                 });
@@ -412,13 +411,11 @@
                     }
                 });
                 this.mAudio.addEventListener("error", (event) => {
-                    let completionStatus = new WidgetEventCompletionStatus(2, `ERROR playing audio alert: ${audio.error.message}`);
-                    socket.send(JSON.stringify(completionStatus));
+                    alertsWidget.send(new WidgetEventCompletionStatus(2, `ERROR playing audio alert: ${audio.error.message}`));
                 });
                 this.setupScroll();
             }).catch((error) => {
-                let completionStatus = new WidgetEventCompletionStatus(2, `ERROR fetching audio file: ${error}`);
-                socket.send(JSON.stringify(completionStatus));
+                alertsWidget.send(new WidgetEventCompletionStatus(2, `ERROR fetching audio file: ${error}`));
             });
         }
 
@@ -609,4 +606,6 @@
     alertsWidget.registerMessageError((error) => {
         alertsWidget.send(new WidgetEventCompletionStatus(1, `ERROR exception while preparing/playing alert: ${error}`));
     });
+
+
 </script>

@@ -7,7 +7,6 @@ namespace LukeBot.Common
         public const string LUKEBOT_USER_ID = "lukebot";
 
         public const string PROP_STORE_SERVER_IP_PROP_NAME = "server_ip";
-        public const string PROP_STORE_USE_HTTPS_PROP_NAME = "use_https";
         public const string PROP_STORE_HTTPS_DOMAIN_PROP_NAME = "https_domain";
         public const string PROP_STORE_HTTPS_EMAIL_PROP_NAME = "https_email";
         public const string PROP_STORE_USER_DOMAIN = "user";
@@ -17,7 +16,6 @@ namespace LukeBot.Common
         public const string PROP_STORE_RECONNECT_COUNT_PROP_NAME = "reconnect_count";
 
         public static readonly Path PROP_STORE_SERVER_IP_PROP = Path.Form(LUKEBOT_USER_ID, PROP_STORE_SERVER_IP_PROP_NAME);
-        public static readonly Path PROP_STORE_USE_HTTPS_PROP = Path.Form(LUKEBOT_USER_ID, PROP_STORE_USE_HTTPS_PROP_NAME);
         public static readonly Path PROP_STORE_HTTPS_DOMAIN_PROP = Path.Form(LUKEBOT_USER_ID, PROP_STORE_HTTPS_DOMAIN_PROP_NAME);
         public static readonly Path PROP_STORE_HTTPS_EMAIL_PROP = Path.Form(LUKEBOT_USER_ID, PROP_STORE_HTTPS_EMAIL_PROP_NAME);
         public static readonly Path PROP_STORE_USERS_PROP = Path.Form(LUKEBOT_USER_ID, PROP_STORE_USERS_PROP_NAME);

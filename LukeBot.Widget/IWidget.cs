@@ -68,15 +68,13 @@ namespace LukeBot.Widget
         internal string GetWidgetAddress()
         {
             string serverAddress = Conf.Get<string>(LukeBot.Common.Constants.PROP_STORE_SERVER_IP_PROP);
-            // TODO HTTP/HTTPS????
-            return "http://" + serverAddress + "/widget/" + ID;
+            return "https://" + serverAddress + "/widget/" + ID;
         }
 
         private string GetWidgetWSAddress()
         {
             string serverAddress = Conf.Get<string>(LukeBot.Common.Constants.PROP_STORE_SERVER_IP_PROP);
-            // TODO WS/WSS????
-            return "ws://" + serverAddress + "/widgetws/" + ID;
+            return "wss://" + serverAddress + "/widgetws/" + ID;
         }
 
         private async Task<WebSocketRecv> RecvFromWSInternalAsync()

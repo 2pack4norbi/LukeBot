@@ -172,22 +172,29 @@ namespace LukeBot.Endpoint
                 }
 
                 Logger.Log().Debug("Awaiting lifetime task to keep connection to {0} Widget WS alive", widgetUUID);
+                // await for ws to complete, it will be closed in IWidget.cs when needed
                 await resp.lifetimeTask;
                 Logger.Log().Debug("Lifetime task for Widget WS {0} finished", widgetUUID);
+
+                // TODO at this point Kestrel logs "the application completed without reading the entire request body."
+                // I'm not sure why this happens, probably should be taken care of but I couldn't find any reason why
+                // or how to remedy it.
             }
             catch (Exception e)
             {
                 Logger.Log().Error("Error while processing WS connection for widgets: {0}", e.Message);
+                context.Response.StatusCode = StatusCodes.Status500InternalServerError;
             }
         }
 
         public void ConfigureServices(IServiceCollection services)
         {
-            bool useHTTPS = Conf.Get<bool>(Common.Constants.PROP_STORE_USE_HTTPS_PROP);
+            string domain = Conf.Get<string>(Common.Constants.PROP_STORE_HTTPS_DOMAIN_PROP);
 
-            if (useHTTPS)
+            // LettuceEncrypt is not needed when domain is set to localhost
+            // we assume we're in dev environment which has dev certificate provided
+            if (!domain.Contains("localhost"))
             {
-                string domain = Conf.Get<string>(Common.Constants.PROP_STORE_HTTPS_DOMAIN_PROP);
                 string email = Conf.Get<string>(Common.Constants.PROP_STORE_HTTPS_EMAIL_PROP);
 
                 services.AddLettuceEncrypt(c =>
@@ -196,6 +203,13 @@ namespace LukeBot.Endpoint
                     c.DomainNames = new string[] { domain };
                     c.EmailAddress = email;
                 });
+            }
+            else
+            {
+                Logger.Log().Warning("=== NOTE ===");
+                Logger.Log().Warning("HTTPS domain is set to localhost - assuming we're in dev environment");
+                Logger.Log().Warning("If something fails, remember to run \"dotnet dev-certs https --trust\"");
+                Logger.Log().Warning("============");
             }
         }
 
@@ -206,10 +220,7 @@ namespace LukeBot.Endpoint
                 app.UseDeveloperExceptionPage();
             }
 
-            bool useHTTPS = Conf.Get<bool>(Common.Constants.PROP_STORE_USE_HTTPS_PROP);
-            if (useHTTPS)
-                app.UseHttpsRedirection();
-
+            app.UseHttpsRedirection();
             app.UseWebSockets();
             app.UseRouting();
             app.UseStaticFiles(new StaticFileOptions()
@@ -246,7 +257,7 @@ namespace LukeBot.Endpoint
                     var widget = context.Request.RouteValues["widget"];
                     await HandleWidgetCallback($"{widget}", context);
                 });
-                endpoints.MapGet("widgetws/{widget}", async context => {
+                endpoints.Map("widgetws/{widget}", async context => {
                     var widget = context.Request.RouteValues["widget"];
                     await HandleWidgetWSCallback($"{widget}", context);
                 });

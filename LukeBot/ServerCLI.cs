@@ -1,11 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
+using System.Net.Security;
 using System.Net.Sockets;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using LukeBot.Common;
 using LukeBot.Config;
 using LukeBot.Logging;
@@ -27,6 +31,7 @@ namespace LukeBot
             private const int REPLAY_PREVENT_WAIT_TIME = 3 * 1000; // 3 seconds in miliseconds
 
             public string mUsername = "";
+            private TaskCompletionSource<string> mUsernamePromise = new();
             public string mCookie = ""; // full ID of this connection context
             public SessionData mSessionData = null;
             private IUserManager mUserManager = null;
@@ -37,7 +42,7 @@ namespace LukeBot
             private string mLogPreamble = "";
             private string mCurrentUser = "";
             private TcpClient mClient = null;
-            private NetworkStream mStream = null;
+            private Stream mStream = null;
             private byte[] mRecvBuffer = new byte[4096];
             private Thread mRecvThread = null;
             private bool mRecvThreadDone = false;
@@ -83,10 +88,10 @@ namespace LukeBot
                     msg.Type != ServerMessageType.Login; // Login messages are not accepted at this point
             }
 
-            public ClientContext(TcpClient client, IUserManager userManager, Dictionary<string, Command> commands, OnClientDoneDelegate clientDoneDelegate)
+            public ClientContext(TcpClient client, Stream stream, IUserManager userManager, Dictionary<string, Command> commands, OnClientDoneDelegate clientDoneDelegate)
             {
                 mClient = client;
-                mStream = mClient.GetStream();
+                mStream = stream; // passed on separately to wrap it into SslStream
                 mStream.ReadTimeout = 125 * 1000; // 2 minutes
                 mUserManager = userManager;
                 mPermissionLevel = UserPermissionLevel.None;
@@ -248,6 +253,7 @@ namespace LukeBot
 
                     // let the username be known
                     mUsername = loginMsg.User;
+                    mUsernamePromise.SetResult(mUsername);
 
                     byte[] pwdBuf = Convert.FromBase64String(loginMsg.PasswordHashBase64);
                     UserPermissionLevel permLevel = mUserManager.AuthenticateUser(loginMsg.User, pwdBuf, out string reason);
@@ -304,7 +310,7 @@ namespace LukeBot
 
             public void FetchPermissionLevel()
             {
-                Path permissionLevelPath = Path.Start()
+                Config.Path permissionLevelPath = Config.Path.Start()
                     .Push(Constants.PROP_STORE_USER_DOMAIN)
                     .Push(mCurrentUser)
                     .Push(UserContext.PROP_STORE_ACCOUNT_DOMAIN)
@@ -315,6 +321,11 @@ namespace LukeBot
                     // no permission level set, assume no permissions
                     mPermissionLevel = UserPermissionLevel.None;
                 }
+            }
+
+            public TaskCompletionSource<string> GetUsernamePromise()
+            {
+                return mUsernamePromise;
             }
 
             public void ForceDisconnect()
@@ -429,6 +440,7 @@ namespace LukeBot
         private Mutex mInterruptMutex = new();
         private IUserManager mUserManager = null;
         private TcpListener mServer;
+        private X509Certificate2 mSSLCert;
         private string mAddress;
         private int mPort;
 
@@ -447,19 +459,35 @@ namespace LukeBot
         {
             // this blocks until a new connection comes in
             TcpClient client = mServer.AcceptTcpClient();
+            Stream stream = null;
 
-            // Create a new context and start it. It will carry on with the initial conversation.
-            ClientContext context = new(client, mUserManager, mCommands, OnClientRecvThreadDone);
-            mClients.Add(context.mCookie, context);
-
-            if (!mUserToClientCookie.ContainsKey(context.mUsername))
+            if (mSSLCert == null)
             {
-                mUserToClientCookie.Add(context.mUsername, new());
+                throw new ServerCLIException("SSL Cert is null when it definitely shouldn't be");
             }
 
-            mUserToClientCookie[context.mUsername].Add(context.mCookie);
+            SslStream sslStream = new SslStream(client.GetStream(), false);
+            sslStream.AuthenticateAsServer(mSSLCert, false, true);
+            stream = sslStream;
+
+            // Create a new context and start it. It will carry on with the initial conversation.
+            ClientContext context = new(client, stream, mUserManager, mCommands, OnClientRecvThreadDone);
+            mClients.Add(context.mCookie, context);
 
             context.StartThread();
+
+            // fetch username from Promise
+            if (context.GetUsernamePromise().Task.Wait(1000))
+            {
+                string username = context.GetUsernamePromise().Task.Result;
+
+                if (!mUserToClientCookie.ContainsKey(username))
+                {
+                    mUserToClientCookie.Add(username, new());
+                }
+
+                mUserToClientCookie[username].Add(context.mCookie);
+            }
         }
 
         private void ClearDoneClients()
@@ -475,7 +503,12 @@ namespace LukeBot
                 string username = mClients[client].mUsername;
                 mClients[client].WaitForShutdown();
                 mClients.Remove(client);
-                mUserToClientCookie[username].Remove(client);
+
+                if (mUserToClientCookie.ContainsKey(username) &&
+                    mUserToClientCookie[username].Contains(client))
+                {
+                    mUserToClientCookie[username].Remove(client);
+                }
 
                 Logger.Log().Debug("{0} cleared", clientShort);
             }
@@ -506,6 +539,30 @@ namespace LukeBot
             mUserManager = userManager;
 
             mServer = new TcpListener(IPAddress.Parse(address), port);
+
+            string httpsDomain;
+            if (!Conf.TryGet<string>(Common.Constants.PROP_STORE_HTTPS_DOMAIN_PROP, out httpsDomain))
+            {
+                // no domain is defined and we need it to load the certificate
+                throw new ServerCLIException("No HTTPS domain was set.", Common.Constants.PROP_STORE_HTTPS_EMAIL_PROP.ToString());
+            }
+
+            X509Store store = new(StoreName.My, StoreLocation.CurrentUser);
+            store.Open(OpenFlags.OpenExistingOnly);
+            Logger.Log().Info("X509 Store opened with {0} certificates:", store.Certificates.Count);
+            foreach (X509Certificate2 cert in store.Certificates)
+            {
+                Logger.Log().Info("  - {0} (friendly name {1})", cert.Subject, cert.FriendlyName);
+            }
+
+            X509Certificate2Collection certs = store.Certificates.Find(X509FindType.FindBySubjectName, httpsDomain, true);
+            if (certs.Count == 0)
+            {
+                throw new ServerCLIException("HTTPS certificate for {0} domain not found.", httpsDomain);
+            }
+
+            Logger.Log().Info("ServerCLI: Found certificate for {0}", httpsDomain);
+            mSSLCert = certs[0];
         }
 
         ~ServerCLI()

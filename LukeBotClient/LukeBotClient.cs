@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Net;
+using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
@@ -26,7 +28,7 @@ namespace LukeBotClient
 
         private ProgramOptions mOpts;
         private TcpClient mClient = null;
-        private NetworkStream mStream = null;
+        private Stream mStream = null;
         private SessionData mSessionData = null;
         private byte[] mRecvBuffer = null;
         private Thread mRecvThread = null;
@@ -269,7 +271,10 @@ namespace LukeBotClient
                 mClient.SendBufferSize = Constants.CLIENT_BUFFER_SIZE;
                 mClient.ReceiveBufferSize = Constants.CLIENT_BUFFER_SIZE;
 
-                mStream = mClient.GetStream();
+                SslStream sslStream = new SslStream(mClient.GetStream(), false);
+                sslStream.AuthenticateAsClient(mOpts.Address);
+
+                mStream = sslStream;
 
                 LoginServerMessage msg = new(user, pwdHash);
                 await SendObject<LoginServerMessage>(msg);
