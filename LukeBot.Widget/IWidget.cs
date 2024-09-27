@@ -36,6 +36,7 @@ namespace LukeBot.Widget
 
         public string ID { get; private set; }
         public string Name { get; private set; }
+        public bool Loaded { get; private set; }
         public string mWidgetFilePath;
         protected string mLBUser;
         private List<string> mHead;
@@ -50,6 +51,8 @@ namespace LukeBot.Widget
         private Config.Path mConfigurationPath;
 
         protected bool Connected { get { return mWS != null && mWS.State == WebSocketState.Open; } }
+        protected abstract void OnLoad(); // called when widget is loaded. Can throw, which will leave widget in unloaded state.
+        protected abstract void OnUnload(); // called when widget is loaded. Can throw, which will leave widget in unloaded state.
         protected abstract void OnConnected();
         protected virtual void OnConfigurationUpdate() {}
 
@@ -67,13 +70,13 @@ namespace LukeBot.Widget
 
         internal string GetWidgetAddress()
         {
-            string serverAddress = Conf.Get<string>(LukeBot.Common.Constants.PROP_STORE_SERVER_IP_PROP);
+            string serverAddress = Conf.Get<string>(LukeBot.Common.Constants.PROP_STORE_HTTPS_DOMAIN_PROP);
             return "https://" + serverAddress + "/widget/" + ID;
         }
 
         private string GetWidgetWSAddress()
         {
-            string serverAddress = Conf.Get<string>(LukeBot.Common.Constants.PROP_STORE_SERVER_IP_PROP);
+            string serverAddress = Conf.Get<string>(LukeBot.Common.Constants.PROP_STORE_HTTPS_DOMAIN_PROP);
             return "wss://" + serverAddress + "/widgetws/" + ID;
         }
 
@@ -237,6 +240,7 @@ namespace LukeBot.Widget
 
             ID = id;
             Name = name;
+            Loaded = false;
             mLBUser = lbUser;
             mHead = new List<string>();
             mWS = null;
@@ -251,12 +255,38 @@ namespace LukeBot.Widget
                 .Push(ID)
                 .Push(Constants.PROP_CONFIG);
             mConfiguration = config;
-            LoadConfiguration();
         }
 
         public IWidget(string lbUser, string widgetFilePath, string id, string name)
             : this(lbUser, widgetFilePath, id, name, new EmptyWidgetConfiguration())
         {
+        }
+
+        public void Load()
+        {
+            if (Loaded)
+                return;
+
+            LoadConfiguration();
+            OnLoad();
+            Loaded = true;
+        }
+
+        public void Unload()
+        {
+            if (!Loaded)
+                return;
+
+            mWSThreadDone = true;
+            CloseWS(WebSocketCloseStatus.NormalClosure);
+
+            if (mWSMessagingThread != null)
+                mWSMessagingThread.Join();
+
+            SaveConfiguration();
+
+            OnUnload();
+            Loaded = false;
         }
 
         public string GetPage()
@@ -314,19 +344,5 @@ namespace LukeBot.Widget
         }
 
         public abstract WidgetType GetWidgetType();
-
-        public virtual void RequestShutdown()
-        {
-            mWSThreadDone = true;
-            CloseWS(WebSocketCloseStatus.NormalClosure);
-        }
-
-        public virtual void WaitForShutdown()
-        {
-            if (mWSMessagingThread != null)
-                mWSMessagingThread.Join();
-
-            SaveConfiguration();
-        }
     }
 }

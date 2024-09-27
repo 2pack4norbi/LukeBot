@@ -61,16 +61,21 @@ namespace LukeBot.Endpoint
                 logging.AddProvider(new LBLoggingProvider());
             });
 
-            string IP = Conf.Get<string>(Common.Constants.PROP_STORE_SERVER_IP_PROP);
+            string domain;
             string[] URLs;
 
-            if (IP.Contains("localhost"))
+            if (!Conf.TryGet<string>(Common.Constants.PROP_STORE_HTTPS_DOMAIN_PROP, out domain))
+            {
+                domain = "localhost";
+            }
+
+            if (domain.Contains("localhost"))
             {
                 // manually set only localhost
                 // we do this path just in case someone prefers to use different-than-default port 5000
                 URLs = new string[]
                 {
-                    "https://" + IP + "/",
+                    "https://" + domain + "/",
                 };
             }
             else
@@ -78,15 +83,15 @@ namespace LukeBot.Endpoint
                 // add defined address + localhost:5000
                 URLs = new string[]
                 {
-                    "https://" + IP + "/",
+                    "https://" + domain + "/",
                     "https://localhost:5000/"
                 };
             }
 
-            Logger.Log().Debug("Endpoint using host addresses:");
+            Logger.Log().Info("Endpoint using host addresses:");
             foreach (string addr in URLs)
             {
-                Logger.Log().Debug("  - https://" + IP + "/");
+                Logger.Log().Info("  - https://" + addr + "/");
             }
 
             builder.UseUrls(URLs);

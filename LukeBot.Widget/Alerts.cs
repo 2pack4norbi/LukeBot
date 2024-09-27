@@ -148,8 +148,7 @@ namespace LukeBot.Widget
             AwaitEventCompletion();
         }
 
-        public Alerts(string lbUser, string id, string name)
-            : base(lbUser, "LukeBot.Widget/Widgets/Alerts.html", id, name, new AlertWidgetConfig())
+        protected override void OnLoad()
         {
             EventCollection collection = Comms.Event.User(mLBUser);
 
@@ -161,6 +160,25 @@ namespace LukeBot.Widget
 
             collection.Event(Events.TWITCH_SUBSCRIPTION).Endpoint += OnSubscriptionEvent;
             collection.Event(Events.TWITCH_SUBSCRIPTION).InterruptEndpoint += OnEventInterrupt;
+        }
+
+        protected override void OnUnload()
+        {
+            EventCollection collection = Comms.Event.User(mLBUser);
+
+            collection.Event(Events.TWITCH_CHANNEL_POINTS_REDEMPTION).Endpoint -= OnSimpleEvent<TwitchChannelPointsRedemptionArgs>;
+            collection.Event(Events.TWITCH_CHANNEL_POINTS_REDEMPTION).InterruptEndpoint -= OnEventInterrupt;
+
+            collection.Event(Events.TWITCH_CHEER).Endpoint -= OnSimpleEvent<TwitchCheerArgs>;
+            collection.Event(Events.TWITCH_CHEER).InterruptEndpoint -= OnEventInterrupt;
+
+            collection.Event(Events.TWITCH_SUBSCRIPTION).Endpoint -= OnSubscriptionEvent;
+            collection.Event(Events.TWITCH_SUBSCRIPTION).InterruptEndpoint -= OnEventInterrupt;
+        }
+
+        public Alerts(string lbUser, string id, string name)
+            : base(lbUser, "LukeBot.Widget/Widgets/Alerts.html", id, name, new AlertWidgetConfig())
+        {
         }
 
         public override WidgetType GetWidgetType()

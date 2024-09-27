@@ -42,14 +42,23 @@ namespace LukeBot.Widget
             }
         }
 
+        protected override void OnLoad()
+        {
+            Comms.Event.User(mLBUser).Event(Events.SPOTIFY_STATE_UPDATE).Endpoint += OnStateUpdate;
+            Comms.Event.User(mLBUser).Event(Events.SPOTIFY_TRACK_CHANGED).Endpoint += OnTrackChanged;
+        }
+
+        protected override void OnUnload()
+        {
+            Comms.Event.User(mLBUser).Event(Events.SPOTIFY_STATE_UPDATE).Endpoint -= OnStateUpdate;
+            Comms.Event.User(mLBUser).Event(Events.SPOTIFY_TRACK_CHANGED).Endpoint -= OnTrackChanged;
+        }
+
         public NowPlaying(string lbUser, string id, string name)
             : base(lbUser, "LukeBot.Widget/Widgets/NowPlaying.html", id, name)
         {
             mState = null;
             mCurrentTrack = null;
-
-            Comms.Event.User(mLBUser).Event(Events.SPOTIFY_STATE_UPDATE).Endpoint += OnStateUpdate;
-            Comms.Event.User(mLBUser).Event(Events.SPOTIFY_TRACK_CHANGED).Endpoint += OnTrackChanged;
         }
 
         public override WidgetType GetWidgetType()

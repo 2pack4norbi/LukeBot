@@ -6,26 +6,21 @@ namespace LukeBotClient
 {
     internal class ProgramOptions
     {
-        [Option('a', "address",
+        [Value(0,
             HelpText = "Provide IP address to connect to",
-            Default = Constants.SERVER_DEFAULT_ADDRESS)]
+            Required = false,
+            Default = LukeBot.Common.Constants.DEFAULT_SERVER_HTTPS_DOMAIN)]
         public string Address { get; set; }
 
         [Option('p', "port",
             HelpText = "Provide a custom port to connect to",
-            Default = Constants.SERVER_DEFAULT_PORT)]
+            Default = LukeBot.Common.Constants.SERVERCLI_DEFAULT_PORT)]
         public int Port { get; set; }
-
-        [Option("disable-ssl",
-            HelpText = "Disable the use of SSL for connection. Production server will refuse a connection like that, use only for development/debug.",
-            Default = false)]
-        public bool DisableSSL { get; set; }
 
         public ProgramOptions()
         {
-            Address = Constants.SERVER_DEFAULT_ADDRESS;
-            Port = Constants.SERVER_DEFAULT_PORT;
-            DisableSSL = false;
+            Address = LukeBot.Common.Constants.DEFAULT_SERVER_HTTPS_DOMAIN;
+            Port = LukeBot.Common.Constants.SERVERCLI_DEFAULT_PORT;
         }
     }
 }

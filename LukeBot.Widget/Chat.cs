@@ -36,12 +36,23 @@ namespace LukeBot.Widget
             // noop
         }
 
-        public Chat(string lbUser, string id, string name)
-            : base(lbUser, "LukeBot.Widget/Widgets/Chat.html", id, name)
+        protected override void OnLoad()
         {
             Comms.Event.User(mLBUser).Event(Events.TWITCH_CHAT_MESSAGE).Endpoint += OnMessage;
             Comms.Event.User(mLBUser).Event(Events.TWITCH_CHAT_CLEAR_USER).Endpoint += OnClearChat;
             Comms.Event.User(mLBUser).Event(Events.TWITCH_CHAT_CLEAR_MESSAGE).Endpoint += OnClearMsg;
+        }
+
+        protected override void OnUnload()
+        {
+            Comms.Event.User(mLBUser).Event(Events.TWITCH_CHAT_MESSAGE).Endpoint -= OnMessage;
+            Comms.Event.User(mLBUser).Event(Events.TWITCH_CHAT_CLEAR_USER).Endpoint -= OnClearChat;
+            Comms.Event.User(mLBUser).Event(Events.TWITCH_CHAT_CLEAR_MESSAGE).Endpoint -= OnClearMsg;
+        }
+
+        public Chat(string lbUser, string id, string name)
+            : base(lbUser, "LukeBot.Widget/Widgets/Chat.html", id, name)
+        {
         }
 
         public override WidgetType GetWidgetType()

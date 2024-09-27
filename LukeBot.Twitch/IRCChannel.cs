@@ -11,7 +11,7 @@ using LukeBot.API;
 
 namespace LukeBot.Twitch
 {
-    class IRCChannel: IEventPublisher
+    class IRCChannel: IEventPublisher, IDisposable
     {
         private string mLBUser;
         private string mChannelName;
@@ -107,6 +107,11 @@ namespace LukeBot.Twitch
             });
 
             return events;
+        }
+
+        public void Dispose()
+        {
+            Comms.Event.User(mLBUser).UnregisterPublisher(this);
         }
 
         public IRCChannel(string lbUser, API.Twitch.GetUserData userData, Token userToken, BadgeCollection globalBadges)

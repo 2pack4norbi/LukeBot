@@ -66,6 +66,14 @@ namespace LukeBot.Widget
             }
         }
 
+        protected override void OnLoad()
+        {
+        }
+
+        protected override void OnUnload()
+        {
+        }
+
         public Echo(string lbUser, string id, string name)
             : base(lbUser, "LukeBot.Widget/Widgets/Echo.html", id, name)
         {

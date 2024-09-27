@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Net.WebSockets;
 using System.Threading.Tasks;
 using LukeBot.Config;
+using LukeBot.Logging;
 using LukeBot.Module;
 using LukeBot.Widget.Common;
 
@@ -35,8 +36,25 @@ namespace LukeBot.Widget
 
             foreach (WidgetDesc wd in widgets)
             {
-                LoadWidget(wd);
+                AddWidgetFromDesc(wd);
             }
+        }
+
+        private WidgetDesc GetWidgetDescFromConfig(string id)
+        {
+            Path widgetCollectionProp = GetWidgetCollectionPropertyName();
+
+            WidgetDesc[] widgets;
+            if (!Conf.TryGet<WidgetDesc[]>(widgetCollectionProp, out widgets))
+                throw new WidgetNotFoundException(id);
+
+            foreach (WidgetDesc wd in widgets)
+            {
+                if (wd.Id == id)
+                    return wd;
+            }
+
+            throw new WidgetNotFoundException(id);
         }
 
         private void SaveWidgetToConfig(IWidget w)
@@ -53,6 +71,21 @@ namespace LukeBot.Widget
             ConfUtil.ArrayRemove<WidgetDesc>(widgetCollectionProp, (WidgetDesc d) => d.Id != id);
         }
 
+
+
+        private IWidget AddWidgetFromDesc(WidgetDesc wd)
+        {
+            IWidget w = AllocateWidget(wd.Type, wd.Id, wd.Name);
+            mWidgets.Add(wd.Id, w);
+
+            if (wd.Name != null && wd.Name.Length > 0)
+                mNameToId.Add(wd.Name, wd.Id);
+
+            LoadWidget(wd.Id);
+
+            return w;
+        }
+
         private IWidget AllocateWidget(WidgetType type, string id, string name)
         {
             switch (type)
@@ -66,16 +99,53 @@ namespace LukeBot.Widget
             }
         }
 
-
-        internal IWidget LoadWidget(WidgetDesc wd)
+        private void RemoveWidget(string id)
         {
-            IWidget w = AllocateWidget(wd.Type, wd.Id, wd.Name);
-            mWidgets.Add(wd.Id, w);
+            string name = mWidgets[id].Name;
 
-            if (wd.Name != null && wd.Name.Length > 0)
-                mNameToId.Add(wd.Name, wd.Id);
+            UnloadWidget(id);
+            mWidgets.Remove(id);
 
-            return w;
+            if (mNameToId.ContainsKey(name))
+                mNameToId.Remove(name);
+
+            RemoveWidgetFromConfig(id);
+        }
+
+        private void LoadWidget(string id)
+        {
+            IWidget w = mWidgets[id];
+
+            try
+            {
+                // Load() can fail, which will leave the Widget in unloaded state.
+                w.Load();
+            }
+            catch (Exception e)
+            {
+                if (w.Name.Length > 0)
+                    Logger.Log().Error("Falied to load Widget {0} ({1}): {2}", w.Name, w.ID, e.Message);
+                else
+                    Logger.Log().Error("Falied to load Widget {0}: {1}", w.ID, e.Message);
+            }
+        }
+
+        private void UnloadWidget(string id)
+        {
+            IWidget w = mWidgets[id];
+
+            try
+            {
+                // Unload() can fail, but we should ignore it and move on
+                w.Unload();
+            }
+            catch (Exception e)
+            {
+                if (w.Name.Length > 0)
+                    Logger.Log().Error("Falied to unload Widget {0} ({1}): {2}", w.Name, w.ID, e.Message);
+                else
+                    Logger.Log().Error("Falied to unload Widget {0}: {1}", w.ID, e.Message);
+            }
         }
 
         internal string GetWidgetPage(string widgetID)
@@ -149,6 +219,8 @@ namespace LukeBot.Widget
 
             SaveWidgetToConfig(w);
 
+            LoadWidget(id);
+
             return w;
         }
 
@@ -169,19 +241,24 @@ namespace LukeBot.Widget
             return mWidgets[GetActualWidgetId(id)].GetDesc();
         }
 
+        public bool IsWidgetLoaded(string id)
+        {
+            return mWidgets[GetActualWidgetId(id)].Loaded;
+        }
+
         public void DeleteWidget(string id)
         {
             string actualId = GetActualWidgetId(id);
-            IWidget w = mWidgets[actualId];
 
-            w.RequestShutdown();
-            w.WaitForShutdown();
+            RemoveWidget(actualId);
+        }
 
-            mWidgets.Remove(actualId);
-            if (mNameToId.ContainsKey(id))
-                mNameToId.Remove(id);
+        public void ReloadWidget(string id)
+        {
+            string actualId = GetActualWidgetId(id);
 
-            RemoveWidgetFromConfig(actualId);
+            UnloadWidget(actualId);
+            LoadWidget(actualId);
         }
 
         public WidgetConfiguration GetWidgetConfiguration(string id)
@@ -198,18 +275,15 @@ namespace LukeBot.Widget
 
         public void RequestShutdown()
         {
-            foreach (var w in mWidgets)
+            foreach (IWidget w in mWidgets.Values)
             {
-                w.Value.RequestShutdown();
+                string id = w.ID;
+                UnloadWidget(id);
             }
         }
 
         public void WaitForShutdown()
         {
-            foreach (var w in mWidgets)
-            {
-                w.Value.WaitForShutdown();
-            }
         }
 
         public ModuleType GetModuleType()

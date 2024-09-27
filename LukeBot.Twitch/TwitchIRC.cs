@@ -355,12 +355,6 @@ namespace LukeBot.Twitch
             Logger.Log().Info("Twitch IRC module initialized");
         }
 
-        ~TwitchIRC()
-        {
-            Disconnect();
-            WaitForShutdown();
-        }
-
         public void JoinChannel(string lbUser, API.Twitch.GetUserData user, Token token)
         {
             mChannelsMutex.WaitOne();
@@ -390,6 +384,7 @@ namespace LukeBot.Twitch
 
             mIRCClient.Send(IRCMessage.PART(user.login));
 
+            mChannels[user.login].Dispose();
             mChannels.Remove(user.login);
 
             mChannelsMutex.ReleaseMutex();

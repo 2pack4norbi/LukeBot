@@ -53,7 +53,7 @@ namespace LukeBot
                 mInterface = new BasicCLI(userManager);
                 break;
             case InterfaceType.server:
-                mInterface = new ServerCLI("127.0.0.1", 55268, userManager);
+                mInterface = new ServerCLI(userManager);
                 break;
             default:
                 throw new UnrecognizedInterfaceTypeException(mType);

@@ -3,8 +3,8 @@
     public interface IUserModule
     {
         public void Run();
-        public void RequestShutdown();
-        public void WaitForShutdown();
+        public void RequestShutdown(); // TODO replace with single call Shutdown()
+        public void WaitForShutdown(); // TODO ^
         public ModuleType GetModuleType();
     }
 }

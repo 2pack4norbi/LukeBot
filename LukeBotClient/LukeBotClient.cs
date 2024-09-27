@@ -151,6 +151,8 @@ namespace LukeBotClient
                 {
                     PrintLine("Receive thread exiting - received NULL message, probably connection is broken.");
                     mRecvThreadDone = true;
+                    mState = State.Done;
+                    LukeBot.Common.Utils.CancelConsoleIO();
                     continue;
                 }
 
@@ -257,6 +259,8 @@ namespace LukeBotClient
             int tries = 0;
             while (!loggedIn)
             {
+                Console.WriteLine("Attempting login to " + mOpts.Address);
+
                 Console.Write("Username: ");
                 string user = Console.ReadLine();
 
@@ -319,6 +323,7 @@ namespace LukeBotClient
 
                 // should be a simple "send command and wait for response" here
                 mState = State.InCLI;
+                mAwaitResponseEvent.Reset();
                 while (mState != State.Done)
                 {
                     string msg = "";
@@ -326,6 +331,7 @@ namespace LukeBotClient
                     switch (mState)
                     {
                     case State.InCLI:
+                        Print(mCurrentPrompt);
                         msg = Console.ReadLine();
 
                         if (msg == "quit")
@@ -339,6 +345,7 @@ namespace LukeBotClient
                         mState = State.AwaitingResponse;
                         CommandServerMessage cmdMessage = new(mSessionData, msg);
                         await SendObject<CommandServerMessage>(cmdMessage);
+                        PrintLine("state = " + mState);
                         break;
                     case State.AwaitingResponse:
                         mAwaitResponseEvent.WaitOne();

@@ -155,7 +155,7 @@ namespace LukeBot
                 while (!mRecvThreadDone)
                 {
                     ServerMessage msg = ReceiveObject<ServerMessage>();
-                    LogClientContext(LogLevel.Info, "Mesage: {0}", msg.Type.ToString());
+                    LogClientContext(LogLevel.Info, "Mesage: {0}", msg.ToString());
                     if (!ValidateMessage(msg))
                     {
                         // cut the connection, something was not correct
@@ -441,7 +441,7 @@ namespace LukeBot
         private IUserManager mUserManager = null;
         private TcpListener mServer;
         private X509Certificate2 mSSLCert;
-        private string mAddress;
+        private IPAddress mAddress;
         private int mPort;
 
         public void OnClientRecvThreadDone(string cookie)
@@ -529,16 +529,30 @@ namespace LukeBot
             mClients.Clear();
         }
 
-        public ServerCLI(string address, int port, IUserManager userManager)
+        public ServerCLI(IUserManager userManager)
         {
             if (userManager == null)
                 throw new ArgumentException("User manager is required for Server CLI to work.");
 
-            mAddress = address;
-            mPort = port;
+            mAddress = IPAddress.Parse("127.0.0.1");
+            mPort = Common.Constants.SERVERCLI_DEFAULT_PORT;
             mUserManager = userManager;
 
-            mServer = new TcpListener(IPAddress.Parse(address), port);
+            string address;
+            if (!Conf.TryGet<string>(Common.Constants.PROP_STORE_SERVER_IP_PROP, out address))
+                throw new ServerCLIException("server_ip property not set, IP address for Server's TCP listener unknown");
+
+            try
+            {
+                mAddress = IPAddress.Parse(address);
+            }
+            catch (FormatException)
+            {
+                throw new ServerCLIException("server_ip property is invalid");
+            }
+
+            Logger.Log().Info("ServerCLI: Will listen on {0}", mAddress);
+            mServer = new TcpListener(mAddress, mPort);
 
             string httpsDomain;
             if (!Conf.TryGet<string>(Common.Constants.PROP_STORE_HTTPS_DOMAIN_PROP, out httpsDomain))

@@ -142,9 +142,19 @@ namespace LukeBot.Widget
             return mUsers[lbUser].GetWidgetInfo(id);
         }
 
+        public bool IsWidgetLoaded(string lbUser, string id)
+        {
+            return mUsers[lbUser].IsWidgetLoaded(id);
+        }
+
         public void DeleteWidget(string lbUser, string id)
         {
             mUsers[lbUser].DeleteWidget(id);
+        }
+
+        public void ReloadWidget(string lbUser, string id)
+        {
+            mUsers[lbUser].ReloadWidget(id);
         }
 
         public void UpdateWidgetConfiguration(string lbUser, string id, IEnumerable<(string, string)> changes)

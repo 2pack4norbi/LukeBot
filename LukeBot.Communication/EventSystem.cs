@@ -71,6 +71,9 @@ namespace LukeBot.Communication
          */
         public Event Event(string name)
         {
+            if (!mEvents.ContainsKey(name))
+                throw new EventNotFoundException(name);
+
             return mEvents[name];
         }
 
@@ -139,6 +142,8 @@ namespace LukeBot.Communication
         {
             string pubName = p.GetName();
 
+            Logger.Log().Debug("Registering publisher {0}", pubName);
+
             if (mPublishers.ContainsKey(pubName))
                 throw new PublisherAlreadyRegisteredException(pubName);
 
@@ -169,6 +174,8 @@ namespace LukeBot.Communication
         public void UnregisterPublisher(IEventPublisher p)
         {
             string pubName = p.GetName();
+
+            Logger.Log().Debug("Unregistering publisher {0}", pubName);
 
             if (!mPublishers.ContainsKey(pubName))
                 return;
