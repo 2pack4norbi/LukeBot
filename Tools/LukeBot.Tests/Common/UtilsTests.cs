@@ -54,6 +54,7 @@ namespace LukeBot.Tests.Common
         }
 
         [TestMethod]
+        [Ignore]
         public void Utils_ConvertArgStringsToTuples_ParseErrorTest()
         {
             Assert.IsTrue(false, "This test must be implemented!");
